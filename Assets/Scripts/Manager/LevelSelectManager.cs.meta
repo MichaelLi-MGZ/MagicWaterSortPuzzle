@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 2add37fbe652548558b48128f7740dc1
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - contentRoot: {instanceID: 0}
+  - grid: {instanceID: 0}
+  - levelItemPrefab: {instanceID: 0}
+  - buttonSprite: {fileID: 21300000, guid: 2c6f8b3fcdb4e493c8e78d573638bdd7, type: 3}
+  - lockSprite: {fileID: 21300000, guid: 0ae10a291dfaf40919d1ec8dbf1e056d, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
