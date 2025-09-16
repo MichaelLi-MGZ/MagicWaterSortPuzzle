@@ -73,7 +73,7 @@ public class GameManager : MonoBehaviour
         InitGame();
     }
 
-    void InitGame()
+    public void InitGame()
     {
         currentState = GAME_STATE.WAIT;
         currentBottleFull = 0;

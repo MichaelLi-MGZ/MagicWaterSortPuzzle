@@ -71,6 +71,10 @@ public class AdsControl : MonoBehaviour, IUnityAdsInitializationListener, IUnity
     private RewardedInterstitialAd rewardedInterstitialAd;
     private bool isShowingAppOpenAd;
 
+    // Global kill-switch for ads
+    private const string AdsEnabledPrefsKey = "AdsEnabled";
+    private bool adsEnabled = true;
+
     public static AdsControl Instance { get { return instance; } }
 
     void Awake()
@@ -89,6 +93,12 @@ public class AdsControl : MonoBehaviour, IUnityAdsInitializationListener, IUnity
 
     private void Start()
     {
+        LoadAdsEnabledSetting();
+        if (!adsEnabled)
+        {
+            Debug.Log("AdsControl: Ads disabled via configuration. Skipping ad SDK initialization.");
+            return;
+        }
 
         MobileAds.SetiOSAppPauseOnBackground(true);
         // Initialize the Google Mobile Ads SDK.
@@ -117,6 +127,7 @@ public class AdsControl : MonoBehaviour, IUnityAdsInitializationListener, IUnity
 
     private void HandleInitCompleteAction(InitializationStatus initstatus)
     {
+        if (!adsEnabled) return;
         Debug.Log("Initialization complete.");
 
         // Callbacks from GoogleMobileAds are not guaranteed to be called on
@@ -134,6 +145,42 @@ public class AdsControl : MonoBehaviour, IUnityAdsInitializationListener, IUnity
 
             LoadRewardAd();
         });
+    }
+
+    private void LoadAdsEnabledSetting()
+    {
+        // TEMPORARY: Force disable ads for testing
+        adsEnabled = false;
+        Debug.Log("AdsControl: Ads temporarily disabled for testing");
+        
+        // Original code (commented out):
+        // adsEnabled = PlayerPrefs.GetInt(AdsEnabledPrefsKey, 1) == 1;
+        // // Optional external config in Resources/AdsConfig.json => {"adsEnabled":true}
+        // try
+        // {
+        //     var json = Resources.Load<TextAsset>("AdsConfig");
+        //     if (json != null)
+        //     {
+        //         if (json.text.Contains("\"adsEnabled\":false")) adsEnabled = false;
+        //         if (json.text.Contains("\"adsEnabled\":true")) adsEnabled = true;
+        //     }
+        // }
+        // catch { }
+    }
+
+    public static void SetAdsEnabled(bool enable)
+    {
+        if (Instance != null)
+        {
+            Instance.adsEnabled = enable;
+            PlayerPrefs.SetInt(AdsEnabledPrefsKey, enable ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+        else
+        {
+            PlayerPrefs.SetInt(AdsEnabledPrefsKey, enable ? 1 : 0);
+            PlayerPrefs.Save();
+        }
     }
 
     #region HELPER METHODS
