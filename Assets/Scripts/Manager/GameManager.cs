@@ -68,12 +68,12 @@ public class GameManager : MonoBehaviour
     }
 
     // Start is called before the first frame update
-    void Start()
+    public void Start()
     {
         InitGame();
     }
 
-    public void InitGame()
+    void InitGame()
     {
         currentState = GAME_STATE.WAIT;
         currentBottleFull = 0;

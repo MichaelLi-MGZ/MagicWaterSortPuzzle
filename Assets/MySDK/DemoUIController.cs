@@ -13,7 +13,6 @@ namespace MyGamez.Demo
         public TMPro.TMP_Text goldAmount;
         public DialogWindowController dialogWindow;
         public RIDCheckDialogController RIDCheckDialog;
-        public ScrollRect menuItems;
         public GameObject toastMessage;
 
         private bool playing = false;
@@ -22,7 +21,6 @@ namespace MyGamez.Demo
         // Start is called before the first frame update
         private void Start()
         {
-            SetMenuItemsVisibility(false);
             toastMessage.SetActive(false);  // hide until called to show
             ToastMessage.SetToastObject(toastMessage, this);
             if (! MySDK.Api.Features.PrivacyPolicy.IsPpAccepted())
@@ -395,11 +393,16 @@ namespace MyGamez.Demo
             MySDK.Api.Login.LoginInfo loginInfo = MySDK.Api.Login.GetLoginInfo();
             // Use loginInfo.PlayerID to load & save progress - this demo does not save progress.
 
-            // update total gold
-            OnGoldUpdated();
-
-            // Show menu items
-            SetMenuItemsVisibility(true);
+            // Start the actual game using GameManager
+            if (global::GameManager.instance != null)
+            {
+                Debug.Log("Starting GameManager...");
+                global::GameManager.instance.Start();
+            }
+            else
+            {
+                Debug.LogError("GameManager.instance is null! Make sure GameManager is in the scene and initialized.");
+            }
         }
 
         public override void OnGoldUpdated(int gold = 0)
@@ -410,27 +413,6 @@ namespace MyGamez.Demo
             goldAmount.text = totalGold.ToString();
             PlayerPrefs.SetInt("gold", totalGold);
             PlayerPrefs.Save();
-        }
-
-        private void SetMenuItemsVisibility(bool IsVisible)
-        {
-            // Get the Content transform of the ScrollView
-            Transform contentPanel = menuItems.content;
-
-            // Find all buttons under the Content panel
-            Button[] buttons = contentPanel.GetComponentsInChildren<Button>(true);
-
-            foreach (var button in buttons)
-            {
-                button.gameObject.SetActive(IsVisible);
-            }
-
-
-            Toggle[] toggles = contentPanel.GetComponentsInChildren<Toggle>(true);
-            foreach (var toggle in toggles)
-            {
-                toggle.gameObject.SetActive(IsVisible);
-            }
         }
 
         public void OnBuy50GoldButtonClicked()

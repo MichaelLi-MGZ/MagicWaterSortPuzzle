@@ -72,13 +72,21 @@ public class DialogWindowController : MonoBehaviour
             Debug.Log("right click callback not null");
             rightCallback();
         }
+        else{
+            Debug.Log("right click callback is null");
+        }
     }
 
     public void onLeftClicked()
     {
+        Debug.Log("left clicked");
         if (leftCallback != null)
         {
+            Debug.Log("left click callback not null");
             leftCallback();
+        }
+        else{
+            Debug.Log("left click callback is null");
         }
     }
 }

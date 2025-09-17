@@ -15,6 +15,20 @@ dependencies {
     implementation 'com.mygamez.mysdk.isbn:billing:5.0.4'
 **DEPS**}
 
+repositories {
+    google()
+    mavenCentral()
+    mavenLocal()
+    // MySDK private Maven repository
+    maven {
+        url 'https://git.ci.mygamez.cloud/api/packages/maven_publishers/maven'
+        credentials {
+            username = MYSDK_MAVEN_USER
+            password = MYSDK_MAVEN_PASS
+        }
+    }
+}
+
 // Android Resolver Exclusions Start
 android {
   packagingOptions {
