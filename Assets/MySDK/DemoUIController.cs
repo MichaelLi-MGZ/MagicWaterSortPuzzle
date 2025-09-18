@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using MyGamez.MySDK.Api;
 using MyGamez.Demo.MySDKHelpers;
 using System;
@@ -367,18 +368,6 @@ namespace MyGamez.Demo
 
         }
 
-
-        
-
-        
-
-        
-
-        
-
-        
-
-
         private void StartGame()
         {
             Debug.Log("Starting game");
@@ -393,17 +382,11 @@ namespace MyGamez.Demo
             MySDK.Api.Login.LoginInfo loginInfo = MySDK.Api.Login.GetLoginInfo();
             // Use loginInfo.PlayerID to load & save progress - this demo does not save progress.
 
-            // Start the actual game using GameManager
-            if (global::GameManager.instance != null)
-            {
-                Debug.Log("Starting GameManager...");
-                global::GameManager.instance.Start();
-            }
-            else
-            {
-                Debug.LogError("GameManager.instance is null! Make sure GameManager is in the scene and initialized.");
-            }
+            // Load the Game scene where GameManager is located
+            Debug.Log("MySDK initialization complete, loading Game scene...");
+            SceneRouter.LoadGameScene();
         }
+
 
         public override void OnGoldUpdated(int gold = 0)
         {
