@@ -177,9 +177,14 @@ namespace MyGamez.Demo.MySDKHelpers
             // Implement your own logic here.
             // This implementation is for demonstration purposes only
             Debug.Log("LoginState changed! LoginState is " + loginState.ToString());
-
-            if (observer != null)
+            Debug.Log("observer is " + (observer != null));
+            if (observer != null) {
                 observer.OnLoginStateChanged(loginState);
+            }
+            else
+            {
+                Debug.Log("observer is null");
+            }
         }
     }
 

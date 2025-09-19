@@ -57,6 +57,9 @@ public class GameManager : MonoBehaviour
 
     public UIManager uiManager;
 
+    [Header("Logout Dialog")]
+    public DialogWindowController dialogWindow;
+
     public static GameManager instance;
 
 
@@ -903,5 +906,71 @@ public class GameManager : MonoBehaviour
         uiManager.gameView.coinTxt.text = GameManager.instance.currentCoin.ToString();
         uiManager.shopView.coinTxt.text = GameManager.instance.currentCoin.ToString();
         GameManager.instance.SaveCoin();
+    }
+
+    public void OnLogoutButtonClicked()
+    {
+        Debug.Log("Logout button clicked");
+        ShowLogoutDialog();
+    }
+
+    public void ShowLogoutDialog()
+    {
+        if (dialogWindow != null)
+        {
+            dialogWindow.setTitleText("Logout Warning!");
+            dialogWindow.setMessageText("Logging out will remove all account information from this device. You may lose access to your game progress. Do you want to continue?");
+            dialogWindow.setLeftText("Cancel");
+            dialogWindow.setLeftCallback(OnLogoutCancel);
+            dialogWindow.setRightButtonActive(true);
+            dialogWindow.setRightText("Confirm");
+            dialogWindow.setRightCallback(OnLogoutConfirm);
+            dialogWindow.show();
+        }
+        else
+        {
+            Debug.LogError("DialogWindowController not assigned in GameManager!");
+        }
+    }
+
+    private void OnLogoutCancel()
+    {
+        Debug.Log("Logout cancelled by user");
+        if (dialogWindow != null)
+        {
+            dialogWindow.hide();
+        }
+    }
+
+    private void OnLogoutConfirm()
+    {
+        Debug.Log("User confirmed logout");
+        if (dialogWindow != null)
+        {
+            dialogWindow.hide();
+        }
+        
+        // Clear user data and logout
+        ClearUserData();
+        MyGamez.MySDK.Api.Login.DoLogout();
+    }
+
+    private void ClearUserData()
+    {
+        Debug.Log("Clearing user data...");
+        
+        // Clear game progress
+        PlayerPrefs.DeleteKey("CurrentLevel");
+        PlayerPrefs.DeleteKey("Coin");
+        PlayerPrefs.DeleteKey("Undo");
+        PlayerPrefs.DeleteKey("CurrentBottle");
+        PlayerPrefs.DeleteKey("CurrentPalette");
+        PlayerPrefs.DeleteKey("CurrentWall");
+        PlayerPrefs.DeleteKey("RestartNumber");
+        
+        // Clear any other user-specific data
+        PlayerPrefs.Save();
+        
+        Debug.Log("User data cleared");
     }
 }

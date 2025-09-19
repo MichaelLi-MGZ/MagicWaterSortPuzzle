@@ -19,6 +19,12 @@ namespace MyGamez.Demo
         private bool playing = false;
         private MySDK.Api.Login.ILoginStateListener loginStateListener;
 
+        private void Awake()
+        {
+            // Make this object persist across scene changes
+            DontDestroyOnLoad(gameObject);
+        }
+
         // Start is called before the first frame update
         private void Start()
         {

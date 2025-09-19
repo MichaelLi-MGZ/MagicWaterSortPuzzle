@@ -8,7 +8,7 @@
   <files />
   <settings>
     <setting name="androidAbis" value="arm64-v8a,x86,x86_64" />
-    <setting name="bundleId" value="com.FoxGames.MagicWaterSort" />
+    <setting name="bundleId" value="com.mygamez.MagicWaterSort" />
     <setting name="explodeAars" value="True" />
     <setting name="gradleBuildEnabled" value="True" />
     <setting name="gradlePropertiesTemplateEnabled" value="True" />
