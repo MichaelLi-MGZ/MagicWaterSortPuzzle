@@ -33,6 +33,16 @@ public static class SceneRouter
 
 	public static void LoadGameScene()
 	{
-		SceneManager.LoadScene(GameSceneName);
+		Debug.Log($"SceneRouter: Attempting to load scene '{GameSceneName}'");
+		
+		try
+		{
+			SceneManager.LoadScene(GameSceneName);
+			Debug.Log($"SceneRouter: Successfully loaded scene '{GameSceneName}'");
+		}
+		catch (System.Exception e)
+		{
+			Debug.LogError($"SceneRouter: Failed to load scene '{GameSceneName}': {e.Message}");
+		}
 	}
 }

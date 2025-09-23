@@ -15,6 +15,7 @@ namespace MyGamez.Demo
         public DialogWindowController dialogWindow;
         public RIDCheckDialogController RIDCheckDialog;
         public GameObject toastMessage;
+        public NotificationBackground notificationBackground;
 
         private bool playing = false;
         private MySDK.Api.Login.ILoginStateListener loginStateListener;
@@ -23,6 +24,28 @@ namespace MyGamez.Demo
         {
             // Make this object persist across scene changes
             DontDestroyOnLoad(gameObject);
+            
+            // Subscribe to scene loading events
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+        
+        private void OnDestroy()
+        {
+            // Unsubscribe from scene loading events
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+        
+        private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            Debug.Log($"DemoUIController: Scene loaded - '{scene.name}' (mode: {mode})");
+            
+            // Hide notification background when Game scene loads
+            if (scene.name == "Game" && notificationBackground != null)
+            {
+                Debug.Log($"DemoUIController: Hiding notification background for Game scene (currently visible: {notificationBackground.IsVisible()})");
+                notificationBackground.Hide();
+                Debug.Log($"DemoUIController: Notification background hidden (now visible: {notificationBackground.IsVisible()})");
+            }
         }
 
         // Start is called before the first frame update
@@ -86,15 +109,15 @@ namespace MyGamez.Demo
         public override void OnMySDKInit(MySDKInit.MySDKInitResult result)
         {
             mySdkInitCounter++;
-            ToastMessage.Show("MySDK Init result is " + result.ResultCode + " " + result.ResultMsg, 1);
+            //ToastMessage.Show("MySDK Init result is " + result.ResultCode + " " + result.ResultMsg, 1);
             Debug.Log("MySDK Init result is " + result.ResultCode + " " + result.ResultMsg);
 
             switch (result.ResultCode)
             {
                 case ResultCode.SUCCESS:
                 case ResultCode.ALREADY_DONE:
-                    // Initialisation is completed. Move on to player login.
-                    Login();
+                    // Initialisation is completed. Show progress bar before login.
+                    ShowProgressAndLogin();
                     break;
                 case ResultCode.PP_AND_TOS_NOT_ACCEPTED:
                     // Show Privacy Policy Dialog
@@ -111,6 +134,31 @@ namespace MyGamez.Demo
                     break;
                 
                 
+            }
+        }
+
+        /// <summary>
+        /// Show progress bar for 8 seconds then call Login()
+        /// </summary>
+        private void ShowProgressAndLogin()
+        {
+            Debug.Log("DemoUIController: MySDK initialization successful, showing progress bar");
+            
+            if (notificationBackground != null)
+            {
+                // Show the notification background with progress bar
+                notificationBackground.Show();
+                
+                // Start the 8-second progress bar, then call Login when complete
+                notificationBackground.StartProgress(() => {
+                    Debug.Log("DemoUIController: Progress bar complete, calling Login()");
+                    Login();
+                });
+            }
+            else
+            {
+                Debug.LogWarning("DemoUIController: NotificationBackground not assigned, calling Login immediately");
+                Login();
             }
         }
 
@@ -159,6 +207,7 @@ namespace MyGamez.Demo
             switch (loginState)
             {
                 case MySDK.Api.Login.LoginState.LOGGED_IN:
+                    Debug.Log("DemoUIController: User logged in successfully, initializing anti-addiction");
                     InitializeAntiaddiction();
                     break;
                 case MySDK.Api.Login.LoginState.LOGIN_FAILED:
@@ -194,6 +243,7 @@ namespace MyGamez.Demo
         private void InitializeAntiaddiction()
         {
             aaInitCounter++;
+            Debug.Log($"DemoUIController: Initializing anti-addiction (attempt {aaInitCounter})");
             string playerId = MySDK.Api.Login.GetLoginInfo().PlayerID;
             if (playerId == null || playerId.Length == 0)
             {
@@ -353,8 +403,12 @@ namespace MyGamez.Demo
 
         private void ShowRestrictions()
         {
+            Debug.Log("DemoUIController: Showing restrictions check");
             if (MySDK.Api.AntiAddiction.IsAdult())
+            {
+                Debug.Log("DemoUIController: Player is adult, starting game");
                 StartGame();
+            }
             else
             {
                 MySDK.Api.AntiAddiction.PromptDialogData data = MySDK.Api.AntiAddiction.GetPlayerIdentificationCompletedPromptDialogData();
@@ -376,7 +430,7 @@ namespace MyGamez.Demo
 
         private void StartGame()
         {
-            Debug.Log("Starting game");
+            Debug.Log("DemoUIController: Starting game - setting up payment callbacks and loading Game scene");
             playing = true;
             // Set Payment callback to MySDK (for Android only, iOS has different payment related methods)
             // Callback will be triggered when player exits payment process
