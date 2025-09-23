@@ -16,9 +16,16 @@ namespace MyGamez.Demo
         public RIDCheckDialogController RIDCheckDialog;
         public GameObject toastMessage;
         public NotificationBackground notificationBackground;
+        public AgeAppropriateWindowController ageAppropriateWindowController; // Reference to window controller
 
         private bool playing = false;
         private MySDK.Api.Login.ILoginStateListener loginStateListener;
+        
+        // Window visibility monitoring
+        private bool previousWindowVisible = false;
+        private float visibilityCheckInterval = 0.5f; // Check every 0.5 seconds
+        private float lastVisibilityCheckTime = 0f;
+        private bool loginPending = false; // Track if login is waiting for window to be hidden
 
         private void Awake()
         {
@@ -33,6 +40,12 @@ namespace MyGamez.Demo
         {
             // Unsubscribe from scene loading events
             UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+        
+        private void Update()
+        {
+            // Monitor window visibility changes
+            MonitorWindowVisibility();
         }
         
         private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
@@ -138,27 +151,121 @@ namespace MyGamez.Demo
         }
 
         /// <summary>
-        /// Show progress bar for 8 seconds then call Login()
+        /// Monitor window visibility and handle login accordingly
+        /// </summary>
+        private void MonitorWindowVisibility()
+        {
+            // Check at specified intervals
+            if (Time.time - lastVisibilityCheckTime < visibilityCheckInterval)
+                return;
+                
+            lastVisibilityCheckTime = Time.time;
+            
+            // Get the current window controller (auto-find if needed)
+            AgeAppropriateWindowController controller = GetAgeAppropriateWindowController();
+            if (controller == null)
+                return;
+            
+            bool currentWindowVisible = controller.IsWindowVisible();
+            
+            // Check for state changes
+            if (currentWindowVisible != previousWindowVisible)
+            {
+                // If window became hidden and login is pending, proceed with login
+                if (!currentWindowVisible && previousWindowVisible && loginPending)
+                {
+                    loginPending = false;
+                    Login();
+                }
+                
+                previousWindowVisible = currentWindowVisible;
+            }
+        }
+        
+        /// <summary>
+        /// Show progress bar for 8 seconds then call Login() (with window visibility check)
         /// </summary>
         private void ShowProgressAndLogin()
         {
-            Debug.Log("DemoUIController: MySDK initialization successful, showing progress bar");
-            
             if (notificationBackground != null)
             {
                 // Show the notification background with progress bar
                 notificationBackground.Show();
                 
-                // Start the 8-second progress bar, then call Login when complete
+                // Start the 8-second progress bar, then check window visibility before login
                 notificationBackground.StartProgress(() => {
-                    Debug.Log("DemoUIController: Progress bar complete, calling Login()");
-                    Login();
+                    CheckWindowVisibilityAndLogin();
                 });
             }
             else
             {
-                Debug.LogWarning("DemoUIController: NotificationBackground not assigned, calling Login immediately");
+                CheckWindowVisibilityAndLogin();
+            }
+        }
+        
+        /// <summary>
+        /// Get the AgeAppropriateWindowController instance, auto-find if not assigned
+        /// </summary>
+        private AgeAppropriateWindowController GetAgeAppropriateWindowController()
+        {
+            // If manually assigned, verify it's the correct one by checking if it has an active window
+            if (ageAppropriateWindowController != null)
+            {
+                bool hasActiveWindow = ageAppropriateWindowController.ageAppropriateWindow != null && 
+                                     ageAppropriateWindowController.ageAppropriateWindow.activeInHierarchy;
+                
+                // If the manually assigned one has an active window, use it
+                if (hasActiveWindow)
+                {
+                    return ageAppropriateWindowController;
+                }
+            }
+            
+            // Auto-find instances and try to find the one with an active window first
+            AgeAppropriateWindowController[] allControllers = FindObjectsOfType<AgeAppropriateWindowController>();
+            
+            foreach (var controller in allControllers)
+            {
+                if (controller.ageAppropriateWindow != null && controller.ageAppropriateWindow.activeInHierarchy)
+                {
+                    return controller;
+                }
+            }
+            
+            // If no active window, return the first one found
+            if (allControllers.Length > 0)
+            {
+                return allControllers[0];
+            }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// Check window visibility and either login immediately or wait for window to be hidden
+        /// </summary>
+        private void CheckWindowVisibilityAndLogin()
+        {
+            AgeAppropriateWindowController controller = GetAgeAppropriateWindowController();
+            
+            if (controller == null)
+            {
                 Login();
+                return;
+            }
+            
+            bool isWindowVisible = controller.IsWindowVisible();
+            
+            if (!isWindowVisible)
+            {
+                // Window is not visible, proceed with login immediately
+                Login();
+            }
+            else
+            {
+                // Window is visible, wait for it to become hidden
+                loginPending = true;
+                previousWindowVisible = true; // Set initial state
             }
         }
 

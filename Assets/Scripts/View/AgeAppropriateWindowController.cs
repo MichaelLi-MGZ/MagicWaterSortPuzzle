@@ -17,7 +17,16 @@ public class AgeAppropriateWindowController : MonoBehaviour
     public float fadeOutDuration = 0.3f;
     
     
-    public bool isWindowVisible = false;
+    private bool _isWindowVisible = false;
+    
+    /// <summary>
+    /// Property to track window visibility
+    /// </summary>
+    public bool isWindowVisible 
+    { 
+        get { return _isWindowVisible; }
+        set { _isWindowVisible = value; }
+    }
     
     void Start()
     {
@@ -112,12 +121,15 @@ public class AgeAppropriateWindowController : MonoBehaviour
             return;
         }
         
-        Debug.Log("AgeAppropriateWindowController: Showing age appropriate window");
+        // Prevent multiple rapid calls
+        if (isWindowVisible)
+        {
+            return;
+        }
         
         // Activate the window
         ageAppropriateWindow.SetActive(true);
         isWindowVisible = true;
-        
         
         // Get the main panel for animation
         CanvasGroup canvasGroup = ageAppropriateWindow.GetComponent<CanvasGroup>();
@@ -133,10 +145,7 @@ public class AgeAppropriateWindowController : MonoBehaviour
         
         // Animate in
         canvasGroup.DOFade(1f, fadeInDuration)
-            .SetEase(Ease.OutQuad)
-            .OnComplete(() => {
-                Debug.Log("AgeAppropriateWindowController: Window shown successfully");
-            });
+            .SetEase(Ease.OutQuad);
     }
     
     /// <summary>
@@ -150,7 +159,6 @@ public class AgeAppropriateWindowController : MonoBehaviour
             return;
         }
         
-        Debug.Log("AgeAppropriateWindowController: Hiding age appropriate window");
         
         // Get the main panel for animation
         CanvasGroup canvasGroup = ageAppropriateWindow.GetComponent<CanvasGroup>();
@@ -170,7 +178,6 @@ public class AgeAppropriateWindowController : MonoBehaviour
                 // Deactivate the window
                 ageAppropriateWindow.SetActive(false);
                 isWindowVisible = false;
-                Debug.Log("AgeAppropriateWindowController: Window hidden successfully");
             });
     }
     
@@ -195,7 +202,31 @@ public class AgeAppropriateWindowController : MonoBehaviour
     /// <returns>True if visible, false if hidden</returns>
     public bool IsWindowVisible()
     {
+        // Double-check the actual GameObject state
+        bool actualGameObjectState = ageAppropriateWindow != null && ageAppropriateWindow.activeInHierarchy;
+        
+        if (isWindowVisible != actualGameObjectState)
+        {
+            // Sync the state
+            isWindowVisible = actualGameObjectState;
+        }
+        
         return isWindowVisible;
+    }
+    
+    /// <summary>
+    /// Force refresh the window visibility state based on actual GameObject state
+    /// </summary>
+    public void RefreshVisibilityState()
+    {
+        if (ageAppropriateWindow != null)
+        {
+            bool actualState = ageAppropriateWindow.activeInHierarchy;
+            if (isWindowVisible != actualState)
+            {
+                isWindowVisible = actualState;
+            }
+        }
     }
     
     

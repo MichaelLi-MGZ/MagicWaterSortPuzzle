@@ -2800,6 +2800,7 @@ MonoBehaviour:
   RIDCheckDialog: {fileID: 2006548522}
   toastMessage: {fileID: 531282399}
   notificationBackground: {fileID: 2119831836}
+  ageAppropriateWindowController: {fileID: 538490635}
 --- !u!1 &1093682736
 GameObject:
   m_ObjectHideFlags: 0
