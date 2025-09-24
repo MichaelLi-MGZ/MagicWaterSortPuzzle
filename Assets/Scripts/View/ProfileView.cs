@@ -135,8 +135,10 @@ public class ProfileView : BaseView
 
     public void ShowShop()
     {
-        HideView();
+        // Hide view without clearing source scene (for navigation between views)
+        HideViewWithoutClearingSource();
         AudioManager.instance.clickBtn.Play();
+        // Keep the same source scene since we're navigating from profile to shop
         GameManager.instance.uiManager.shopView.ShowView();
     }
 
@@ -188,6 +190,22 @@ public class ProfileView : BaseView
         base.HideView();
         AdsControl.Instance.ShowBannerAd();
         AudioManager.instance.clickBtn.Play();
+        
+        // Check source scene and navigate back accordingly
+        string sourceScene = SceneRouter.GetAndClearSourceScene();
+        if (sourceScene == SceneRouter.LevelSelectSceneName)
+        {
+            // Return to LevelSelect scene
+            SceneRouter.LoadLevelSelectScene();
+        }
+        // If sourceScene is GameSceneName, just hide the view (stay in Game scene)
+    }
+
+    private void HideViewWithoutClearingSource()
+    {
+        base.HideView();
+        AdsControl.Instance.ShowBannerAd();
+        // Don't clear source scene - just hide the view
     }
 
 

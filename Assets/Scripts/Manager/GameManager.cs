@@ -104,6 +104,24 @@ public class GameManager : MonoBehaviour
         levelGen.InitLvGen();
         uiManager.InitView();
 
+        // Check if we should show profile view after loading
+        if (SceneRouter.TryGetAndClearShowProfile())
+        {
+            // Store that we came from LevelSelect scene
+            SceneRouter.SetSourceScene(SceneRouter.LevelSelectSceneName);
+            // Use a small delay to ensure everything is initialized
+            StartCoroutine(ShowProfileAfterDelay());
+        }
+
+        // Check if we should show shop view after loading
+        if (SceneRouter.TryGetAndClearShowShop())
+        {
+            // Store that we came from LevelSelect scene
+            SceneRouter.SetSourceScene(SceneRouter.LevelSelectSceneName);
+            // Use a small delay to ensure everything is initialized
+            StartCoroutine(ShowShopAfterDelay());
+        }
+
         if (currentLv >= 3)
             AdsControl.Instance.ShowBannerAd();
         else
@@ -968,9 +986,37 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.DeleteKey("CurrentWall");
         PlayerPrefs.DeleteKey("RestartNumber");
         
-        // Clear any other user-specific data
-        PlayerPrefs.Save();
+    }
+
+    private System.Collections.IEnumerator ShowProfileAfterDelay()
+    {
+        // Wait for one frame to ensure all UI is properly initialized
+        yield return null;
         
-        Debug.Log("User data cleared");
+        // Show the profile view
+        if (uiManager != null && uiManager.profileView != null)
+        {
+            uiManager.profileView.ShowView();
+        }
+        else
+        {
+            Debug.LogError("GameManager: Cannot show profile view - uiManager or profileView is null!");
+        }
+    }
+
+    private System.Collections.IEnumerator ShowShopAfterDelay()
+    {
+        // Wait for one frame to ensure all UI is properly initialized
+        yield return null;
+        
+        // Show the shop view
+        if (uiManager != null && uiManager.shopView != null)
+        {
+            uiManager.shopView.ShowView();
+        }
+        else
+        {
+            Debug.LogError("GameManager: Cannot show shop view - uiManager or shopView is null!");
+        }
     }
 }

@@ -151,14 +151,17 @@ public class GameView : BaseView
     public void ShowShop()
     {
         AudioManager.instance.clickBtn.Play();
+        // Set source scene to Game since we're opening from Game scene
+        SceneRouter.SetSourceScene(SceneRouter.GameSceneName);
         GameManager.instance.uiManager.shopView.ShowView();
     }
 
     public void ShowProfile()
     {
         AudioManager.instance.clickBtn.Play();
+        // Set source scene to Game since we're opening from Game scene
+        SceneRouter.SetSourceScene(SceneRouter.GameSceneName);
         GameManager.instance.uiManager.profileView.ShowView();
-
     }
 
     public void OpenLevelSelect()

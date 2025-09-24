@@ -67,6 +67,21 @@ public class ShopView : BaseView
         AudioManager.instance.clickBtn.Play();
         //GameManager.instance.levelGen.UpdateBottleSkin(PlayerPrefs.GetInt("CurrentBottle"));
         //GameManager.instance.levelGen.RefreshColor(GameManager.instance.levelGen.colorConfig[PlayerPrefs.GetInt("CurrentPalette")]);
+        
+        // Check source scene and navigate back accordingly
+        string sourceScene = SceneRouter.GetAndClearSourceScene();
+        if (sourceScene == SceneRouter.LevelSelectSceneName)
+        {
+            // Return to LevelSelect scene
+            SceneRouter.LoadLevelSelectScene();
+        }
+        // If sourceScene is GameSceneName, just hide the view (stay in Game scene)
+    }
+
+    private void HideViewWithoutClearingSource()
+    {
+        base.HideView();
+        // Don't clear source scene - just hide the view
     }
 
     void GetCurrentSelectID()

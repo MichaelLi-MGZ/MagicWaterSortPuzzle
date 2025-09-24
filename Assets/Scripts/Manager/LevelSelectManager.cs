@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class LevelSelectManager : MonoBehaviour
 {
@@ -13,17 +14,31 @@ public class LevelSelectManager : MonoBehaviour
 	[Header("Config")]
 	public int maxLevelsToShow = 500;
 	public int firstLockedLevelOffset = 1; // first unlocked is 1
+	[Header("UI Buttons")]
+	public Button profileBtn;
+	public Button coinBtn;
+	[Header("Coin Display")]
+	public TextMeshProUGUI coinTxt;
 
 	private int highestUnlockedLevel;
+	private int currentCoin;
 
 	private void Awake()
 	{
 		highestUnlockedLevel = Mathf.Max(1, PlayerPrefs.GetInt("CurrentLevel", 1));
+		GetCoinData();
 	}
 
 	private void Start()
 	{
 		Populate();
+		UpdateCoinDisplay();
+	}
+
+	private void OnEnable()
+	{
+		// Update coin display when scene becomes active (e.g., returning from shop)
+		UpdateCoinDisplay();
 	}
 
 	private void Populate()
@@ -87,4 +102,42 @@ public class LevelSelectManager : MonoBehaviour
 	{
 		SceneRouter.LoadGameScene();
 	}
+
+	public void ShowProfile()
+	{
+		AudioManager.instance.clickBtn.Play();
+		// Load game scene and show profile view there
+		SceneRouter.LoadGameSceneWithProfile();
+	}
+
+	public void ShowShop()
+	{
+		AudioManager.instance.clickBtn.Play();
+		// Load game scene and show shop view there
+		SceneRouter.LoadGameSceneWithShop();
+	}
+
+	private void GetCoinData()
+	{
+		currentCoin = PlayerPrefs.GetInt("Coin", 0);
+	}
+
+	private void UpdateCoinDisplay()
+	{
+		// Refresh coin data from PlayerPrefs
+		GetCoinData();
+		
+		// Update the coin display text
+		if (coinTxt != null)
+		{
+			coinTxt.text = currentCoin.ToString();
+		}
+	}
+
+	public void RefreshCoinDisplay()
+	{
+		// Public method to manually refresh coin display
+		UpdateCoinDisplay();
+	}
+
 }
