@@ -45,13 +45,13 @@ public class LevelItem : MonoBehaviour
 
     private void OnClick()
     {
-        Debug.Log("LevelItem clicked: " + levelIndex + ", locked: " + isLocked);
+        Debug.Log("关卡项目点击: " + levelIndex + ", 锁定状态: " + isLocked);
         if (isLocked)
         {
-            Debug.Log("Level " + levelIndex + " is locked, cannot click");
+            Debug.Log("第 " + levelIndex + " 关已锁定，无法点击");
             return;
         }
-        Debug.Log("Loading level " + levelIndex);
+        Debug.Log("加载第 " + levelIndex + " 关");
         SceneRouter.LoadGameWithLevel(levelIndex);
     }
 }

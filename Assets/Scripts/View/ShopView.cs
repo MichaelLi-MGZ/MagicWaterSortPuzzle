@@ -310,7 +310,7 @@ public class ShopView : BaseView
     {
         if (GameManager.instance.currentCoin < 400)
         {
-            GameManager.instance.uiManager.warningView.ShowView("No Enough Coins");
+            GameManager.instance.uiManager.warningView.ShowView("金币不足");
             return;
         }
 
@@ -560,37 +560,37 @@ public class ShopView : BaseView
 
                 if (iapID.Equals(Config.IAPPackageID.NoAds.ToString()))
                 {
-                    Debug.Log("REMOVE ADS");
+                    Debug.Log("移除广告");
                     AdsControl.Instance.RemoveAds();
                 }
                 else if (iapID.Equals(Config.IAPPackageID.GoldPack1.ToString()))
                 {
-                    Debug.Log("GOLD PACK 1");
+                    Debug.Log("金币包 1");
                     GameManager.instance.AddCoin(250);
                 }
                 
                 else if (iapID.Equals(Config.IAPPackageID.GoldPack2.ToString()))
                 {
-                    Debug.Log("GOLD PACK 2");
+                    Debug.Log("金币包 2");
                     GameManager.instance.AddCoin(500);
                 }
                 
                 else if (iapID.Equals(Config.IAPPackageID.GoldPack3.ToString()))
                 {
-                    Debug.Log("GOLD PACK 3");
+                    Debug.Log("金币包 3");
                     GameManager.instance.AddCoin(750);
                 }
 
                 else if (iapID.Equals(Config.IAPPackageID.GoldPack4.ToString()))
                 {
-                    Debug.Log("GOLD PACK 3");
+                    Debug.Log("金币包 4");
                     GameManager.instance.AddCoin(750);
                 }
                 
             }
             else
             {
-                Debug.Log("Buy Fail!");
+                Debug.Log("购买失败！");
 
             }
         });

@@ -81,9 +81,6 @@ namespace MyGamez.Demo
         private void ShowPrivacyPolicyAndTosDialog()
         {
             // Show dialog to the player.
-            dialogWindow.setTitleText("TOS & PP");
-            dialogWindow.setMessageText("To continue, you must accept the Privacy Policy and Terms of Service.");
-            dialogWindow.setLeftText("Don't agree");
             dialogWindow.setLeftCallback(
                 delegate
                 {
@@ -91,7 +88,6 @@ namespace MyGamez.Demo
                     MySDK.Api.App.QuitApp();
                 });
             dialogWindow.setRightButtonActive(true);
-            dialogWindow.setRightText("Agree");
             dialogWindow.setRightCallback(
                 delegate
                 {

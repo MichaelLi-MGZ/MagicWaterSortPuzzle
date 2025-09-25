@@ -142,7 +142,7 @@ public class GameView : BaseView
 
     public override void InitView()
     {
-        levelTxt.text = "Level " + GameManager.instance.currentLv.ToString();
+        levelTxt.text = "第 " + GameManager.instance.currentLv.ToString() + " 关";
         undoRemain = PlayerPrefs.GetInt("Undo");
         coinTxt.text = GameManager.instance.currentCoin.ToString();
         RefreshUndo();

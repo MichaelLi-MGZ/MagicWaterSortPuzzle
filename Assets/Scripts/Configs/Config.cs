@@ -43,8 +43,8 @@ public class Config
             {
                 packageID = IAPPackageID.NoAds,
                 price = 100, // 1.00 CNY
-                name = "Remove Ads",
-                description = "Remove all advertisements from the game",
+                name = "移除广告",
+                description = "移除游戏中的所有广告",
                 coinAmount = 0,
                 isRemoveAds = true
             },
@@ -52,8 +52,8 @@ public class Config
             {
                 packageID = IAPPackageID.GoldPack1,
                 price = 100, // 1.00 CNY
-                name = "250 Gold Coins",
-                description = "Get 250 gold coins to unlock new items",
+                name = "250 金币",
+                description = "获得250金币来解锁新物品",
                 coinAmount = 250,
                 isRemoveAds = false
             },
@@ -61,8 +61,8 @@ public class Config
             {
                 packageID = IAPPackageID.GoldPack2,
                 price = 200, // 2.00 CNY
-                name = "500 Gold Coins",
-                description = "Get 500 gold coins to unlock new items",
+                name = "500 金币",
+                description = "获得500金币来解锁新物品",
                 coinAmount = 500,
                 isRemoveAds = false
             },
@@ -70,8 +70,8 @@ public class Config
             {
                 packageID = IAPPackageID.GoldPack3,
                 price = 300, // 3.00 CNY
-                name = "750 Gold Coins",
-                description = "Get 750 gold coins to unlock new items",
+                name = "750 金币",
+                description = "获得750金币来解锁新物品",
                 coinAmount = 750,
                 isRemoveAds = false
             },
@@ -79,8 +79,8 @@ public class Config
             {
                 packageID = IAPPackageID.GoldPack4,
                 price = 400, // 4.00 CNY
-                name = "1000 Gold Coins",
-                description = "Get 1000 gold coins to unlock new items",
+                name = "1000 金币",
+                description = "获得1000金币来解锁新物品",
                 coinAmount = 1000,
                 isRemoveAds = false
             },
@@ -88,8 +88,8 @@ public class Config
             {
                 packageID = IAPPackageID.GoldPack5,
                 price = 500, // 5.00 CNY
-                name = "1500 Gold Coins",
-                description = "Get 1500 gold coins to unlock new items",
+                name = "1500 金币",
+                description = "获得1500金币来解锁新物品",
                 coinAmount = 1500,
                 isRemoveAds = false
             },
@@ -97,8 +97,8 @@ public class Config
             {
                 packageID = IAPPackageID.GoldPack6,
                 price = 600, // 6.00 CNY
-                name = "2000 Gold Coins",
-                description = "Get 2000 gold coins to unlock new items",
+                name = "2000 金币",
+                description = "获得2000金币来解锁新物品",
                 coinAmount = 2000,
                 isRemoveAds = false
             }

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: db62aa9dab739446d85b92c277f72efc
+guid: fb3a4dda88f33452aa6b4a8eb9d284c3
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - ????ZhouZiFangTi2021
+  - Alibaba PuHuiTi
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0
