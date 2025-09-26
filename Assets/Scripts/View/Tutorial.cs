@@ -41,14 +41,14 @@ public class Tutorial : MonoBehaviour
                 {
                     hand1.SetActive(true);
                     hand2.SetActive(false);
-                    guideTxt.text = "Click The First Bottle";
+                    guideTxt.text = "点击第一个瓶子";
                 }
 
                 else if(step == 1)
                 {
                     hand1.SetActive(false);
                     hand2.SetActive(true);
-                    guideTxt.text = "Click To Pour Water";
+                    guideTxt.text = "点击去倒水";
                 }
 
                 else if(step == 2)
@@ -62,14 +62,14 @@ public class Tutorial : MonoBehaviour
 
                 hand1.SetActive(false);
                 hand2.SetActive(false);
-                guideTxt.text = "Only SAME COLOR Liquid can be poured on top of each other";
+                guideTxt.text = "只有相同颜色的液体可以相互倾倒";
 
                 if (Input.GetMouseButtonDown(0))
                 {
                     gameObject.SetActive(false);
                 }
 
-                break;
+                break; 
         }
     }
 }
