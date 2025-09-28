@@ -376,6 +376,9 @@ namespace MyGamez.Demo
                 case ResultCode.NEED_TO_SHOW_DIALOG:
                     ShowRIDCheckDialog();
                     break;
+                case ResultCode.LIMITED:
+                    ShowLimitedDialog();
+                    break;
                 case ResultCode.TIME_OVER:
                 case ResultCode.DISALLOWED:
                     ShowTimeOutDialog();
@@ -393,15 +396,46 @@ namespace MyGamez.Demo
             }
         }
 
+        private void ShowLimitedDialog()
+        {
+            // Get Prompt data
+            string body = "您的实名认证信息尚未年满18周岁，根据未成年人防沉迷规定，未满18周岁的用户可在每周五、六、日或法定节假日的20:00~21:00进入游戏进行游玩。";
+            // TODO remove
+            Debug.Log("ShowTimeOutDialog, Body " + body);
+            // Show dialog to the player.
+            dialogWindow.setTitleText("温馨提示");
+            dialogWindow.setMessageText(body);
+            dialogWindow.setLeftText("确定");
+            dialogWindow.setLeftCallback(
+                delegate
+                {
+                    // Demo code
+                    dialogWindow.hide();
+
+                    // playing = Player clicked in-game button to check privacy policy
+                    // !playing = First start and need to initialise MySDK
+                    if (!playing)
+                    {
+                        RequestGameStart();
+                    }
+
+                });
+            dialogWindow.setRightButtonActive(false);
+            dialogWindow.show();
+        }
+
         private void ShowTimeOutDialog()
         {
             // Get Prompt data
-            MySDK.Api.AntiAddiction.PromptDialogData data = MySDK.Api.AntiAddiction.GetTimeOfDayConstraintPromptDialogData();
-
+            string body = "您的实名认证信息尚未年满18周岁，根据未成年人防沉迷规定，您只可在每周五、六、日或法定节假日的20:00~21:00进入游戏进行游玩。";
+            // TODO remove
+            Debug.Log("ShowTimeOutDialog, Body " + body);
             // Show dialog to the player.
-            dialogWindow.setTitleText(data.Title);
-            dialogWindow.setMessageText(data.Body);
-            dialogWindow.setLeftText(data.Button);
+            dialogWindow.setTitleText("温馨提示");
+
+
+            dialogWindow.setMessageText(body);
+            dialogWindow.setLeftText("确定");
             dialogWindow.setLeftCallback(
                 delegate
                 {
@@ -444,7 +478,11 @@ namespace MyGamez.Demo
                     // Player has typed invalid name or ID. Indicate something was wrong and show RID Check dialog again.
                     ShowRIDCheckDialog();
                     break;
-
+                case ResultCode.LIMITED:
+                    // Minor players are not allowed to play during these hours.
+                    // Show dialog to player and quit app
+                    ShowLimitedDialog();
+                    break;
                 case ResultCode.DISALLOWED:
                 case ResultCode.TIME_OVER:
                     // Minor players are not allowed to play during these hours.
@@ -484,6 +522,9 @@ namespace MyGamez.Demo
                     break;
                 case ResultCode.NEED_TO_SHOW_DIALOG:
                     ShowRIDCheckDialog();
+                    break;
+                case ResultCode.LIMITED:
+                    ShowLimitedDialog();
                     break;
                 case ResultCode.TIME_OVER:
                 case ResultCode.DISALLOWED:
