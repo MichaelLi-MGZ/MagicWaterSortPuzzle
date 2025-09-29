@@ -11,8 +11,8 @@ public class LevelSelectSceneManager : MonoBehaviour
     public Button backButton;
     
     [Header("Sprites")]
-    public Sprite buttonSprite;
-    public Sprite lockSprite;
+    public Sprite openedLevelSprite;
+    public Sprite lockedLevelSprite;
     
     [Header("Config")]
     public int maxLevelsToShow = 500;
@@ -61,10 +61,8 @@ public class LevelSelectSceneManager : MonoBehaviour
             LevelItem item = itemGO.GetComponent<LevelItem>();
             if (item != null)
             {
-                item.buttonSprite = buttonSprite;
-                item.lockSprite = lockSprite;
                 bool locked = i > highestUnlockedLevel + firstLockedLevelOffset - 1;
-                item.Setup(i, locked);
+                item.Setup(i, locked, openedLevelSprite, lockedLevelSprite);
             }
         }
     }

@@ -50,8 +50,8 @@ public class LevelSelectSceneSetup : MonoBehaviour
         // Configure manager
         manager.contentRoot = content;
         manager.grid = grid;
-        manager.buttonSprite = Resources.Load<Sprite>("Sprites/UI/level_button");
-        manager.lockSprite = Resources.Load<Sprite>("Sprites/UI/level_lock");
+        manager.openedLevelSprite = Resources.Load<Sprite>("Sprites/UI/level_button");
+        manager.lockedLevelSprite = Resources.Load<Sprite>("Sprites/UI/level_lock");
         
         // Create LevelItem prefab
         GameObject levelItemPrefab = CreateLevelItemPrefab();
@@ -180,6 +180,11 @@ public class LevelSelectSceneSetup : MonoBehaviour
         // Configure button
         button.targetGraphic = buttonImage;
         
+        // Configure ColorBlock to prevent transparency issues for disabled buttons
+        ColorBlock colorBlock = button.colors;
+        colorBlock.disabledColor = Color.white; // Keep disabled buttons at full opacity
+        button.colors = colorBlock;
+        
         // Create Level Number Text
         GameObject textGO = new GameObject("LevelText");
         textGO.transform.SetParent(buttonGO.transform, false);
@@ -197,36 +202,11 @@ public class LevelSelectSceneSetup : MonoBehaviour
         text.alignment = TextAlignmentOptions.Center;
         text.fontStyle = FontStyles.Bold;
         
-        // Create Lock Icon
-        GameObject lockGO = new GameObject("LockIcon");
-        lockGO.transform.SetParent(buttonGO.transform, false);
-        
-        RectTransform lockRect = lockGO.AddComponent<RectTransform>();
-        lockRect.anchorMin = new Vector2(0.7f, 0.7f);
-        lockRect.anchorMax = new Vector2(0.9f, 0.9f);
-        lockRect.offsetMin = Vector2.zero;
-        lockRect.offsetMax = Vector2.zero;
-        
-        Image lockImage = lockGO.AddComponent<Image>();
-        Sprite lockSprite = Resources.Load<Sprite>("Sprites/UI/level_lock");
-        if (lockSprite != null)
-        {
-            lockImage.sprite = lockSprite;
-        }
-        else
-        {
-            // Fallback color if sprite not found
-            lockImage.color = Color.red;
-        }
-        lockGO.SetActive(false); // Hidden by default
-        
         // Add LevelItem script
         LevelItem levelItem = buttonGO.AddComponent<LevelItem>();
         levelItem.button = button;
         levelItem.label = text;
-        levelItem.lockIcon = lockGO;
         levelItem.backgroundImage = buttonImage;
-        levelItem.lockImage = lockImage;
         
         return buttonGO;
     }

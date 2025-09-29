@@ -9,8 +9,8 @@ public class LevelSelectManager : MonoBehaviour
 	public RectTransform contentRoot;
 	public GridLayoutGroup grid;
 	public GameObject levelItemPrefab;
-	public Sprite buttonSprite;
-	public Sprite lockSprite;
+	public Sprite openedLevelSprite;
+	public Sprite lockedLevelSprite;
 	[Header("Config")]
 	public int maxLevelsToShow = 500;
 	public int firstLockedLevelOffset = 1; // first unlocked is 1
@@ -67,10 +67,8 @@ public class LevelSelectManager : MonoBehaviour
 			LevelItem item = itemGO.GetComponent<LevelItem>();
 			if (item != null)
 			{
-				item.buttonSprite = buttonSprite;
-				item.lockSprite = lockSprite;
 				bool locked = i > highestUnlockedLevel + firstLockedLevelOffset - 1;
-				item.Setup(i, locked);
+				item.Setup(i, locked, openedLevelSprite, lockedLevelSprite);
 			}
 			else
 			{
