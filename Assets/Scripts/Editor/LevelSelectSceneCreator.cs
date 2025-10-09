@@ -177,6 +177,11 @@ public class LevelSelectSceneCreator : EditorWindow
         
         button.targetGraphic = buttonImage;
         
+        // Configure ColorBlock to prevent transparency issues for disabled buttons
+        ColorBlock colorBlock = button.colors;
+        colorBlock.disabledColor = Color.white; // Keep disabled buttons at full opacity
+        button.colors = colorBlock;
+        
         // Create Level Number Text
         GameObject textGO = new GameObject("LevelText");
         textGO.transform.SetParent(buttonGO.transform, false);
@@ -194,35 +199,11 @@ public class LevelSelectSceneCreator : EditorWindow
         text.alignment = TextAlignmentOptions.Center;
         text.fontStyle = FontStyles.Bold;
         
-        // Create Lock Icon
-        GameObject lockGO = new GameObject("LockIcon");
-        lockGO.transform.SetParent(buttonGO.transform, false);
-        
-        RectTransform lockRect = lockGO.AddComponent<RectTransform>();
-        lockRect.anchorMin = new Vector2(0.7f, 0.7f);
-        lockRect.anchorMax = new Vector2(0.9f, 0.9f);
-        lockRect.offsetMin = Vector2.zero;
-        lockRect.offsetMax = Vector2.zero;
-        
-        Image lockImage = lockGO.AddComponent<Image>();
-        Sprite lockSprite = Resources.Load<Sprite>("Sprites/UI/level_lock");
-        if (lockSprite != null)
-        {
-            lockImage.sprite = lockSprite;
-        }
-        else
-        {
-            lockImage.color = Color.red;
-        }
-        lockGO.SetActive(false);
-        
         // Add LevelItem script
         LevelItem levelItem = buttonGO.AddComponent<LevelItem>();
         levelItem.button = button;
         levelItem.label = text;
-        levelItem.lockIcon = lockGO;
         levelItem.backgroundImage = buttonImage;
-        levelItem.lockImage = lockImage;
         
         return buttonGO;
     }
@@ -294,10 +275,10 @@ public class LevelSelectSceneCreator : EditorWindow
             LevelItem item = itemGO.GetComponent<LevelItem>();
             if (item != null)
             {
-                item.buttonSprite = Resources.Load<Sprite>("Sprites/UI/level_button");
-                item.lockSprite = Resources.Load<Sprite>("Sprites/UI/level_lock");
+                Sprite openedSprite = Resources.Load<Sprite>("Sprites/UI/level_button");
+                Sprite lockedSprite = Resources.Load<Sprite>("Sprites/UI/level_lock");
                 bool locked = i > highestUnlocked;
-                item.Setup(i, locked);
+                item.Setup(i, locked, openedSprite, lockedSprite);
             }
             else
             {

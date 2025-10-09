@@ -409,11 +409,7 @@ namespace MyGamez.Demo
             dialogWindow.setLeftCallback(
                 delegate
                 {
-                    // Demo code
                     dialogWindow.hide();
-
-                    // playing = Player clicked in-game button to check privacy policy
-                    // !playing = First start and need to initialise MySDK
                     if (!playing)
                     {
                         RequestGameStart();
@@ -432,8 +428,6 @@ namespace MyGamez.Demo
             Debug.Log("ShowTimeOutDialog, Body " + body);
             // Show dialog to the player.
             dialogWindow.setTitleText("温馨提示");
-
-
             dialogWindow.setMessageText(body);
             dialogWindow.setLeftText("确定");
             dialogWindow.setLeftCallback(

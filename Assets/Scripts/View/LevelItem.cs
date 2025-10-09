@@ -6,16 +6,12 @@ public class LevelItem : MonoBehaviour
 {
 	public Button button;
 	public TextMeshProUGUI label;
-	public GameObject lockIcon;
 	public Image backgroundImage;
-	public Image lockImage;
-	public Sprite buttonSprite;
-	public Sprite lockSprite;
 
 	private int levelIndex;
 	private bool isLocked;
 
-	public void Setup(int levelIndex, bool locked)
+	public void Setup(int levelIndex, bool locked, Sprite openedSprite, Sprite lockedSprite)
 	{
 		this.levelIndex = levelIndex;
 		this.isLocked = locked;
@@ -23,23 +19,23 @@ public class LevelItem : MonoBehaviour
 		{
 			label.text = levelIndex.ToString();
 		}
-		if (lockIcon != null)
+		if (backgroundImage != null)
 		{
-			lockIcon.SetActive(locked);
-		}
-		if (backgroundImage != null && buttonSprite != null)
-		{
-			backgroundImage.sprite = buttonSprite;
-		}
-		if (lockImage != null && lockSprite != null)
-		{
-			lockImage.sprite = lockSprite;
+			// Use different sprite based on locked state
+			backgroundImage.sprite = locked ? lockedSprite : openedSprite;
+			// Ensure full opacity regardless of button state
+			backgroundImage.color = Color.white;
 		}
 		if (button != null)
 		{
 			button.interactable = !locked;
 			button.onClick.RemoveAllListeners();
 			button.onClick.AddListener(OnClick);
+			
+			// Ensure disabled buttons maintain full opacity
+			ColorBlock colorBlock = button.colors;
+			colorBlock.disabledColor = Color.white;
+			button.colors = colorBlock;
 		}
 	}
 
