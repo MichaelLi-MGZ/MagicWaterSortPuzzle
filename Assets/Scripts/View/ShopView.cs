@@ -535,12 +535,41 @@ public class ShopView : BaseView
             Debug.LogError("ShopView: No available billers found for MySDK billing");
         }
     }
-    
 
     public void AddBonusCoinCB()
     {
         // Purchase 250 gold coins using MySDK billing
         PurchaseGoldPack(Config.IAPPackageID.GoldPack1);
+    }
+
+    public void AddBonusCoinCB1()
+    {
+        // Purchase 250 gold coins using MySDK billing
+        PurchaseGoldPack(Config.IAPPackageID.GoldPack1);
+    }
+
+    public void AddBonusCoinCB2()
+    {
+        // Purchase 250 gold coins using MySDK billing
+        PurchaseGoldPack(Config.IAPPackageID.GoldPack2);
+    }
+        
+    public void AddBonusCoinCB3()
+    {
+        // Purchase 250 gold coins using MySDK billing
+        PurchaseGoldPack(Config.IAPPackageID.GoldPack3);
+    }
+        
+    public void AddBonusCoinCB4()
+    {
+        // Purchase 250 gold coins using MySDK billing
+        PurchaseGoldPack(Config.IAPPackageID.GoldPack4);
+    }
+        
+    public void AddBonusCoinCB5()
+    {
+        // Purchase 250 gold coins using MySDK billing
+        PurchaseGoldPack(Config.IAPPackageID.GoldPack5);
     }
 
     public void RemoveAds()
@@ -556,36 +585,12 @@ public class ShopView : BaseView
             if (state == IAPManager.IAP_CALLBACK_STATE.SUCCESS)
             {
 
-                Debug.Log("SUCCESSSUCCESS " + iapID);
-
-                if (iapID.Equals(Config.IAPPackageID.NoAds.ToString()))
-                {
-                    Debug.Log("移除广告");
-                    AdsControl.Instance.RemoveAds();
-                }
-                else if (iapID.Equals(Config.IAPPackageID.GoldPack1.ToString()))
-                {
-                    Debug.Log("金币包 1");
-                    GameManager.instance.AddCoin(250);
-                }
+                Debug.Log("SUCCESS " + iapID);
+                string name = Config.GetPackageConfig(packageID).name;
+                int coinAmount = Config.GetPackageConfig(packageID).coinAmount;
                 
-                else if (iapID.Equals(Config.IAPPackageID.GoldPack2.ToString()))
-                {
-                    Debug.Log("金币包 2");
-                    GameManager.instance.AddCoin(500);
-                }
-                
-                else if (iapID.Equals(Config.IAPPackageID.GoldPack3.ToString()))
-                {
-                    Debug.Log("金币包 3");
-                    GameManager.instance.AddCoin(750);
-                }
-
-                else if (iapID.Equals(Config.IAPPackageID.GoldPack4.ToString()))
-                {
-                    Debug.Log("金币包 4");
-                    GameManager.instance.AddCoin(750);
-                }
+                Debug.Log("购买" + name + " " + coinAmount + "金币");
+                GameManager.instance.AddCoin(coinAmount);
                 
             }
             else
