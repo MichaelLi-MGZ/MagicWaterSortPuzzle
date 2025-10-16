@@ -5,6 +5,12 @@ using UnityEngine.SceneManagement;
 using MyGamez.MySDK.Api;
 using MyGamez.Demo.MySDKHelpers;
 using System;
+#if UNITY_IOS
+using AppleAuth;
+using AppleAuth.Enums;
+using AppleAuth.Interfaces;
+using AppleAuth.Native;
+#endif
 
 namespace MyGamez.Demo
 {
@@ -27,6 +33,14 @@ namespace MyGamez.Demo
         private float lastVisibilityCheckTime = 0f;
         private bool loginPending = false; // Track if login is waiting for window to be hidden
 
+#if UNITY_IOS
+        // Apple Sign-In
+        private IAppleAuthManager appleAuthManager;
+        private bool appleSignInCompleted = false;
+        private string appleUserId = "";
+        private string appleIdToken = "";
+#endif
+
         private void Awake()
         {
             // Make this object persist across scene changes
@@ -46,6 +60,11 @@ namespace MyGamez.Demo
         {
             // Monitor window visibility changes
             MonitorWindowVisibility();
+            
+#if UNITY_IOS
+            // Update Apple Sign-In manager
+            appleAuthManager?.Update();
+#endif
         }
         
         private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
@@ -66,6 +85,12 @@ namespace MyGamez.Demo
         {
             toastMessage.SetActive(false);  // hide until called to show
             ToastMessage.SetToastObject(toastMessage, this);
+            
+#if UNITY_IOS
+            // Initialize Apple Sign-In
+            InitializeAppleSignIn();
+#endif
+            
             if (! MySDK.Api.Features.PrivacyPolicy.IsPpAccepted())
             {
                 // Player has not accepted PP & ToS earlier
@@ -74,7 +99,164 @@ namespace MyGamez.Demo
             else
             {
                 Debug.Log("Going to init MySDK");
-                MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
+                InitializeMySDK();
+            }
+        }
+
+        private void InitializeMySDK()
+        {
+#if UNITY_ANDROID
+            // Android SDK initialization
+            MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
+#elif UNITY_IOS
+            // iOS SDK initialization - show Apple Sign-In first
+            ShowAppleSignInDialog();
+#else
+            // Editor or other platforms - use Android SDK for testing
+            MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
+#endif
+        }
+
+        private void InitializeIOSMySDK()
+        {
+            Debug.Log("Initializing iOS MySDK");
+            // iOS SDK configuration - you may need to adjust these values
+            string cpid = "your_cpid_here"; // Replace with actual CPID
+            string authParams = "{}"; // Replace with actual auth parameters
+            string backendUrl = "https://your-backend-url.com"; // Replace with actual backend URL
+            
+            MyGamezGameObject.DoInitialize(cpid, backendUrl, authParams, OnIOSSDKInitialized);
+        }
+
+#if UNITY_IOS
+        private void InitializeAppleSignIn()
+        {
+            if (AppleAuthManager.IsCurrentPlatformSupported)
+            {
+                var deserializer = new PayloadDeserializer();
+                appleAuthManager = new AppleAuthManager(deserializer);
+                Debug.Log("Apple Sign-In initialized successfully");
+            }
+            else
+            {
+                Debug.LogError("Apple Sign-In is not supported on this platform");
+            }
+        }
+
+        private void ShowAppleSignInDialog()
+        {
+            Debug.Log("Showing Apple Sign-In dialog");
+            
+            if (appleAuthManager == null)
+            {
+                Debug.LogError("Apple Sign-In manager not initialized");
+                return;
+            }
+
+            var loginArgs = new AppleAuthLoginArgs(LoginOptions.IncludeEmail | LoginOptions.IncludeFullName);
+
+            appleAuthManager.LoginWithAppleId(
+                loginArgs,
+                credential =>
+                {
+                    Debug.Log("Apple Sign-In successful");
+                    if (credential is IAppleIDCredential appleIdCredential)
+                    {
+                        appleUserId = appleIdCredential.User;
+                        appleIdToken = System.Text.Encoding.UTF8.GetString(appleIdCredential.IdentityToken);
+                        appleSignInCompleted = true;
+                        
+                        Debug.Log($"Apple User ID: {appleUserId}");
+                        Debug.Log($"Apple ID Token: {appleIdToken}");
+                        
+                        // Now initialize MySDK with Apple authentication
+                        InitializeIOSMySDKWithAppleAuth();
+                    }
+                },
+                error =>
+                {
+                    Debug.LogError("Apple Sign-In failed: " + error);
+                    ToastMessage.Show("Apple Sign-In failed. Please try again.");
+                    // Show Apple Sign-In dialog again
+                    ShowAppleSignInDialog();
+                });
+        }
+
+        private void InitializeIOSMySDKWithAppleAuth()
+        {
+            Debug.Log("Initializing iOS MySDK with Apple authentication");
+            // iOS SDK configuration with Apple authentication
+            string cpid = "mygamez_pw"; // Replace with actual CPID
+            string fake_authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"{appleUserId}\"}}";
+            //string authParams = $"{{\"appleUserId\":\"{appleUserId}\",\"appleIdToken\":\"{appleIdToken}\"}}"; // Include Apple auth data
+            string backendUrl = "https://antiaddiction.dev.mygamez.cn/api/v1/usr"; // Replace with actual backend URL
+            //url = "https://antiaddiction.myservicez.cn/api/v1/usr" // prod
+            //url = "https://antiaddiction.dev.mygamez.cn/api/v1/usr" // dev
+            
+            MyGamezGameObject.DoInitialize(cpid, backendUrl, fake_authParams, OnIOSSDKInitialized);
+        }
+#endif
+
+        private void OnIOSSDKInitialized(MyGamezBridge.EventCode eventCode)
+        {
+            Debug.Log("iOS MySDK initialization result: " + eventCode);
+            
+            switch (eventCode)
+            {
+                case MyGamezBridge.EventCode.UserRightsDetermined:
+                    Debug.Log("iOS MySDK: User rights determined, starting game flow");
+                    RequestIOSGameStart();
+                    break;
+                case MyGamezBridge.EventCode.RidCheckRequired:
+                    Debug.Log("iOS MySDK: RID check required");
+                    ShowRIDCheckDialog();
+                    break;
+                case MyGamezBridge.EventCode.GuestModeNotGranted:
+                    Debug.Log("iOS MySDK: Guest mode not granted");
+                    ShowErrorDialog();
+                    break;
+                case MyGamezBridge.EventCode.GeneralError:
+                    Debug.Log("iOS MySDK: General error occurred");
+                    ShowErrorDialog();
+                    break;
+                default:
+                    Debug.Log("iOS MySDK: Unknown event code: " + eventCode);
+                    break;
+            }
+        }
+
+        private void RequestIOSGameStart()
+        {
+            Debug.Log("Requesting iOS game start");
+            MyGamezGameObject.DoStart(OnIOSGameStartResult);
+        }
+
+        private void OnIOSGameStartResult(MyGamezBridge.EventCode eventCode)
+        {
+            Debug.Log("iOS game start result: " + eventCode);
+            
+            switch (eventCode)
+            {
+                case MyGamezBridge.EventCode.GameStartAllowed:
+                    Debug.Log("iOS MySDK: Game start allowed");
+                    StartGame();
+                    break;
+                case MyGamezBridge.EventCode.GuestModeGameTimeDepleted:
+                case MyGamezBridge.EventCode.DailyGameTimeDepleted:
+                    Debug.Log("iOS MySDK: Game time depleted");
+                    ShowTimeOutDialog();
+                    break;
+                case MyGamezBridge.EventCode.PlayingNotAllowedDueToTimeOfDayConstraints:
+                    Debug.Log("iOS MySDK: Playing not allowed due to time constraints");
+                    ShowTimeOutDialog();
+                    break;
+                case MyGamezBridge.EventCode.RidCheckRequired:
+                    Debug.Log("iOS MySDK: RID check required");
+                    ShowRIDCheckDialog();
+                    break;
+                default:
+                    Debug.Log("iOS MySDK: Unknown game start event: " + eventCode);
+                    break;
             }
         }
 
@@ -102,7 +284,12 @@ namespace MyGamez.Demo
 
                         // Initialise MySDK
                         Debug.Log("Going to init MySDK");
-                        MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
+#if UNITY_IOS
+                        // Show Apple Sign-In dialog first on iOS
+                        ShowAppleSignInDialog();
+#else
+                        InitializeMySDK();
+#endif
                     }
 
                 });
@@ -444,10 +631,43 @@ namespace MyGamez.Demo
         {
             RIDCheckDialog.SetValidateClickedCallback(
                 delegate {
+#if UNITY_ANDROID
                     MySDK.Api.AntiAddiction.AttemptRidCheck(RIDCheckDialog.GetName(), RIDCheckDialog.GetRIN(), new MySDKHelpers.RIDCheckValidationListener(this));
+#elif UNITY_IOS
+                    MyGamezGameObject.DoAttemptRidCheck(RIDCheckDialog.GetName(), RIDCheckDialog.GetRIN(), OnIOSRidCheckResult);
+#endif
                     RIDCheckDialog.Hide();
                 });
             RIDCheckDialog.Show();
+        }
+
+        private void OnIOSRidCheckResult(MyGamezBridge.EventCode eventCode)
+        {
+            Debug.Log("iOS RID check result: " + eventCode);
+            
+            switch (eventCode)
+            {
+                case MyGamezBridge.EventCode.UserRightsDetermined:
+                    Debug.Log("iOS MySDK: RID check successful, user rights determined");
+                    RequestIOSGameStart();
+                    break;
+                case MyGamezBridge.EventCode.RidCheckRequired:
+                    Debug.Log("iOS MySDK: RID check failed, showing dialog again");
+                    ShowRIDCheckDialog();
+                    break;
+                case MyGamezBridge.EventCode.DailyGameTimeDepleted:
+                case MyGamezBridge.EventCode.PlayingNotAllowedDueToTimeOfDayConstraints:
+                    Debug.Log("iOS MySDK: Playing not allowed due to time constraints");
+                    ShowTimeOutDialog();
+                    break;
+                case MyGamezBridge.EventCode.GeneralError:
+                    Debug.Log("iOS MySDK: General error during RID check");
+                    ShowErrorDialog();
+                    break;
+                default:
+                    Debug.Log("iOS MySDK: Unknown RID check result: " + eventCode);
+                    break;
+            }
         }
 
         /// <summary>
@@ -570,15 +790,27 @@ namespace MyGamez.Demo
         {
             Debug.Log("DemoUIController: Starting game - setting up payment callbacks and loading Game scene");
             playing = true;
-            // Set Payment callback to MySDK (for Android only, iOS has different payment related methods)
-            // Callback will be triggered when player exits payment process
-            // This example callback is defined in ClassesToUseMySDK.cs
+            // Set Payment callbacks per platform
+#if UNITY_ANDROID
+            // Android: use MySDK billing callback
             MySDKHelpers.PayCallbackExample exampleCallbackPayment = new MySDKHelpers.PayCallbackExample(this);
             MySDK.Api.Billing.SetPayCallback(exampleCallbackPayment);
+#elif UNITY_IOS
+            // iOS: prepare MyGamez iOS IAP acknowledgements (purchase is requested via OnBuy50GoldButtonClicked)
+            // No explicit callback registration API exposed in MyGamez iOS bridge; we will acknowledge after purchase succeeds
+            // Example: MyGamezGameObject.DoAnnounceCompletedInappPurchase(price, OnIOSPurchaseAcknowledged);
+#endif
 
-            // Get player LoginInfo
+            // Get player identity per platform
+#if UNITY_ANDROID
             MySDK.Api.Login.LoginInfo loginInfo = MySDK.Api.Login.GetLoginInfo();
             // Use loginInfo.PlayerID to load & save progress - this demo does not save progress.
+            Debug.Log("DemoUIController: ANDROID mygamez player id (LoginInfo.PlayerID) = " + (loginInfo != null ? loginInfo.PlayerID : "<null loginInfo>"));
+#elif UNITY_IOS
+            string mygamezPlayerId = MyGamezGameObject.GetCurrentMyGamezId();
+            // Use mygamezPlayerId to load & save progress - this demo does not save progress.
+            Debug.Log("DemoUIController: IOS mygamez player id = " + (string.IsNullOrEmpty(mygamezPlayerId) ? "<empty>" : mygamezPlayerId));
+#endif
 
             // Load the Game scene where GameManager is located
             Debug.Log("MySDK initialization complete, loading Game scene...");
@@ -598,6 +830,8 @@ namespace MyGamez.Demo
 
         public void OnBuy50GoldButtonClicked()
         {
+#if UNITY_ANDROID
+            // Android payment implementation
             // This code demonstrates how to trigger payment in Android MySDK (iOS below).
             // Step 1: Create IAPInfo
             // IAPInfo is for player. It has basic information of this purchase (price, name and description).
@@ -625,6 +859,53 @@ namespace MyGamez.Demo
             // NOTE: MySDK will popup necessary biller dialogs on top of game UI.
             List<MySDK.Api.Billing.Biller> billers = MySDK.Api.Billing.GetAvailableBillers();
             MySDK.Api.Billing.DoBilling(billers[0], payInfo);
+#elif UNITY_IOS
+            // iOS payment implementation
+            float price = 1.0f; // Price in Chinese Yuan for iOS
+            MyGamezGameObject.DoRequestInappPurchase(price, OnIOSPurchaseResult);
+#endif
+        }
+
+        private void OnIOSPurchaseResult(MyGamezBridge.EventCode eventCode)
+        {
+            Debug.Log("iOS purchase result: " + eventCode);
+            
+            switch (eventCode)
+            {
+                case MyGamezBridge.EventCode.IapAllowed:
+                    Debug.Log("iOS MySDK: IAP allowed, processing purchase");
+                    // Here you would integrate with your actual iOS IAP system
+                    // After successful purchase, call:
+                    // MyGamezGameObject.DoAnnounceCompletedInappPurchase(price, OnIOSPurchaseAcknowledged);
+                    break;
+                case MyGamezBridge.EventCode.IapNotAllowedSinglePurchaseLimitExceeded:
+                    ToastMessage.Show("Single purchase limit exceeded");
+                    break;
+                case MyGamezBridge.EventCode.IapNotAllowedMonthlyPurchaseLimitExceeded:
+                    ToastMessage.Show("Monthly purchase limit exceeded");
+                    break;
+                case MyGamezBridge.EventCode.IapNotAllowedInGuestMode:
+                    ToastMessage.Show("IAP not allowed in guest mode");
+                    break;
+                case MyGamezBridge.EventCode.IapNotAllowedAgeCriteriaNotMet:
+                    ToastMessage.Show("IAP not allowed - age criteria not met");
+                    break;
+                default:
+                    Debug.Log("iOS MySDK: Unknown purchase result: " + eventCode);
+                    break;
+            }
+        }
+
+        private void OnIOSPurchaseAcknowledged(MyGamezBridge.EventCode eventCode)
+        {
+            Debug.Log("iOS purchase acknowledged: " + eventCode);
+            
+            if (eventCode == MyGamezBridge.EventCode.CompletedIapAcknowledged)
+            {
+                Debug.Log("iOS MySDK: Purchase successfully acknowledged");
+                // Add gold to player's account
+                OnGoldUpdated(50);
+            }
         }
 
 
@@ -684,21 +965,37 @@ namespace MyGamez.Demo
         public void OnGetRemainingBalanceButtonClicked()
         {
             Debug.Log("mysdk OnGetRemainingBalanceButtonClicked()");
+#if UNITY_ANDROID
             int balance = MySDK.Api.AntiAddiction.GetIAPCreditLeft();
             if (balance == int.MaxValue)
                 ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
             else
                 ToastMessage.Show("Remaining balance is " + balance, ToastMessage.LENGTH_LONG);
+#elif UNITY_IOS
+            float balance = MyGamezGameObject.GetIapCreditLeft();
+            if (balance == float.MaxValue)
+                ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+            else
+                ToastMessage.Show("Remaining balance is " + balance, ToastMessage.LENGTH_LONG);
+#endif
         }
 
         public void OnGetRemainingPlaytimeButtonClicked()
         {
             Debug.Log("mysdk OnGetRemainingPlaytimeButtonClicked()");
+#if UNITY_ANDROID
             long playtime = MySDK.Api.AntiAddiction.GetPlaytimeLeft();
             if (playtime == long.MaxValue)
                 ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
             else
                 ToastMessage.Show("Remaining playtime in ms is " + playtime, ToastMessage.LENGTH_LONG);
+#elif UNITY_IOS
+            int playtime = MyGamezGameObject.GetPlaytimeLeft();
+            if (playtime == int.MaxValue)
+                ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+            else
+                ToastMessage.Show("Remaining playtime in ms is " + playtime, ToastMessage.LENGTH_LONG);
+#endif
         }
     }
 }
