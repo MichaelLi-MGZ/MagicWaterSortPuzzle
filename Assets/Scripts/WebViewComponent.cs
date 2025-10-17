@@ -86,8 +86,8 @@ public class WebViewComponent : MonoBehaviour
 				// Signaler qu'on est bien dans Unity
 				webViewObject.EvaluateJS(@"window.__isUnity = true;"); 
 
-				// Afficher la webview
-				webViewObject.SetVisibility(true);
+				// Don't show the webview automatically - let the controller decide when to show it
+				// webViewObject.SetVisibility(true);
 			},
 
 			// Activer WebKitWebView sur iOS
@@ -106,9 +106,9 @@ public class WebViewComponent : MonoBehaviour
 		int targetWidth = Mathf.RoundToInt(Screen.width * Mathf.Clamp01(widthRatio));
 		int targetHeight = Mathf.RoundToInt(Screen.height * Mathf.Clamp01(heightRatio));
 		int marginLeft = (Screen.width - targetWidth) / 2;
-		int marginTop = (Screen.height - targetHeight) / 2;
+		int marginTop = (Screen.height - targetHeight) / 2 + 150;
 		int marginRight = marginLeft;
-		int marginBottom = marginTop;
+		int marginBottom = marginTop - 200;
 		webViewObject.SetMargins(marginLeft, marginTop, marginRight, marginBottom);
 
 		// Préparer les fichiers pour les installer dans l'espace persistent

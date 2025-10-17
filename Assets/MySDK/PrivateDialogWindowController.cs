@@ -27,6 +27,12 @@ public class PrivateDialogWindowController : MonoBehaviour
         {
             InitializeWebView();
         }
+        
+        // Hide WebView initially - it should only show when dialog is shown
+        if (webViewComponent != null)
+        {
+            webViewComponent.Hide();
+        }
     }
 
     public void show()
