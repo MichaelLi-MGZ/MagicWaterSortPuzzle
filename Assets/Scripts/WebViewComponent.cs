@@ -24,6 +24,10 @@ public class WebViewComponent : MonoBehaviour
 	// Si la Webview est transparente
 	public bool transparent = true;
 
+	// Ratios to size the WebView relative to screen size
+	public float widthRatio = 0.8f;
+	public float heightRatio = 0.4f;
+
 
 	// ------------------------------------------------------------------------- LOCALS
 
@@ -98,8 +102,14 @@ public class WebViewComponent : MonoBehaviour
 			webViewObject.bitmapRefreshCycle = 1;
 		#endif
 
-		// Plein écran et afficher
-		webViewObject.SetMargins(0, 0, 0, 0);
+		// Compute centered half-size rect and apply margins
+		int targetWidth = Mathf.RoundToInt(Screen.width * Mathf.Clamp01(widthRatio));
+		int targetHeight = Mathf.RoundToInt(Screen.height * Mathf.Clamp01(heightRatio));
+		int marginLeft = (Screen.width - targetWidth) / 2;
+		int marginTop = (Screen.height - targetHeight) / 2;
+		int marginRight = marginLeft;
+		int marginBottom = marginTop;
+		webViewObject.SetMargins(marginLeft, marginTop, marginRight, marginBottom);
 
 		// Préparer les fichiers pour les installer dans l'espace persistent
 		PrepareFileForPersistentStorage( () =>
