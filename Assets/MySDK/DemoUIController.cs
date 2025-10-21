@@ -19,6 +19,8 @@ namespace MyGamez.Demo
         
         public TMPro.TMP_Text goldAmount;
         public DialogWindowController dialogWindow;
+        public SingleButtonDialogWindowController singleButtonDialogWindow;
+        public DialogWindowController warningDialogWindow;
         public RIDCheckDialogController RIDCheckDialog;
         public GameObject toastMessage;
         public NotificationBackground notificationBackground;
@@ -266,8 +268,7 @@ namespace MyGamez.Demo
             dialogWindow.setLeftCallback(
                 delegate
                 {
-                    dialogWindow.hide();
-                    MySDK.Api.App.QuitApp();
+                    ShowWarningDialog();
                 });
             dialogWindow.setRightButtonActive(true);
             dialogWindow.setRightCallback(
@@ -295,6 +296,27 @@ namespace MyGamez.Demo
                 });
             Debug.Log("Show PP Dialog");
             dialogWindow.show();
+        }
+
+        private void ShowWarningDialog()
+        {
+            // Show dialog to the player.
+            warningDialogWindow.setLeftCallback(
+                delegate
+                {
+                    warningDialogWindow.hide();
+                    // show warning dialog
+                    MySDK.Api.App.QuitApp();
+                });
+            warningDialogWindow.setRightButtonActive(true);
+            warningDialogWindow.setRightCallback(
+                delegate
+                {
+                    // Demo code
+                    warningDialogWindow.hide();
+                });
+            Debug.Log("Show PP Dialog");
+            warningDialogWindow.show();
         }
 
         private int mySdkInitCounter = 0;
@@ -455,18 +477,17 @@ namespace MyGamez.Demo
         private void ShowErrorDialog()
         {
             // Show dialog to the player.
-            dialogWindow.setTitleText("Error occurred repeatedly");
-            dialogWindow.setMessageText("System encoutered errors repeatedly. Please check internet connection and try again later.");
-            dialogWindow.setLeftText("OK");
-            dialogWindow.setLeftCallback(
+            singleButtonDialogWindow.setTitleText("发生错误");
+            singleButtonDialogWindow.setMessageText("系统反复出现错误。请检查网络连接，稍后再试。");
+            singleButtonDialogWindow.setLeftText("确定");
+            singleButtonDialogWindow.setLeftCallback(
                 delegate
                 {
-                    dialogWindow.hide();
+                    singleButtonDialogWindow.hide();
                     MySDK.Api.App.QuitApp();
                     
                 });
-            dialogWindow.setRightButtonActive(false);
-            dialogWindow.show();
+            singleButtonDialogWindow.show();
         }
 
 
@@ -585,46 +606,26 @@ namespace MyGamez.Demo
 
         private void ShowLimitedDialog()
         {
-            // Get Prompt data
-            string body = "您的实名认证信息尚未年满18周岁，根据未成年人防沉迷规定，未满18周岁的用户可在每周五、六、日或法定节假日的20:00~21:00进入游戏进行游玩。";
-            // TODO remove
-            Debug.Log("ShowTimeOutDialog, Body " + body);
-            // Show dialog to the player.
-            dialogWindow.setTitleText("温馨提示");
-            dialogWindow.setMessageText(body);
-            dialogWindow.setLeftText("确定");
-            dialogWindow.setLeftCallback(
-                delegate
-                {
-                    dialogWindow.hide();
-                    if (!playing)
-                    {
-                        RequestGameStart();
-                    }
-
-                });
-            dialogWindow.setRightButtonActive(false);
-            dialogWindow.show();
+            //No Limited Restrictions for now. just use timeout for temporary use.
+            ShowTimeOutDialog();
         }
 
         private void ShowTimeOutDialog()
         {
             // Get Prompt data
-            string body = "您的实名认证信息尚未年满18周岁，根据未成年人防沉迷规定，您只可在每周五、六、日或法定节假日的20:00~21:00进入游戏进行游玩。";
-            // TODO remove
-            Debug.Log("ShowTimeOutDialog, Body " + body);
+            MySDK.Api.AntiAddiction.PromptDialogData data = MySDK.Api.AntiAddiction.GetTimeOfDayConstraintPromptDialogData();
+
             // Show dialog to the player.
-            dialogWindow.setTitleText("温馨提示");
-            dialogWindow.setMessageText(body);
-            dialogWindow.setLeftText("确定");
-            dialogWindow.setLeftCallback(
+            singleButtonDialogWindow.setTitleText(data.Title);
+            singleButtonDialogWindow.setMessageText(data.Body);
+            singleButtonDialogWindow.setLeftText(data.Button);
+            singleButtonDialogWindow.setLeftCallback(
                 delegate
                 {
-                    dialogWindow.hide();
+                    singleButtonDialogWindow.hide();
                     MySDK.Api.App.QuitApp();
                 });
-            dialogWindow.setRightButtonActive(false);
-            dialogWindow.show();
+            singleButtonDialogWindow.show();
         }
 
         private void ShowRIDCheckDialog()
@@ -771,17 +772,18 @@ namespace MyGamez.Demo
             {
                 MySDK.Api.AntiAddiction.PromptDialogData data = MySDK.Api.AntiAddiction.GetPlayerIdentificationCompletedPromptDialogData();
                 // Show dialog to the player.
-                dialogWindow.setTitleText(data.Title);
-                dialogWindow.setMessageText(data.Body);
-                dialogWindow.setLeftText(data.Button);
-                dialogWindow.setLeftCallback(
+                Debug.Log("ShowRestrictions(): MessageText: " + data.Body);
+                Debug.Log("ShowRestrictions(): Title: " + data.Title);
+                singleButtonDialogWindow.setTitleText(data.Title);
+                singleButtonDialogWindow.setMessageText(data.Body);
+                singleButtonDialogWindow.setLeftText(data.Button);
+                singleButtonDialogWindow.setLeftCallback(
                     delegate
                     {
-                        dialogWindow.hide();
+                        singleButtonDialogWindow.hide();
                         StartGame();
                     });
-                dialogWindow.setRightButtonActive(false);
-                dialogWindow.show();
+                singleButtonDialogWindow.show();
             }
 
         }
@@ -926,17 +928,16 @@ namespace MyGamez.Demo
             MySDK.Api.AntiAddiction.PromptDialogData data = MySDK.Api.AntiAddiction.GetStoreEnterPromptDialogData();
             if (data != null)
             {
-                dialogWindow.setTitleText(data.Title);
-                dialogWindow.setMessageText(data.Body);
-                dialogWindow.setLeftText(data.Button);
-                dialogWindow.setLeftCallback(
+                singleButtonDialogWindow.setTitleText(data.Title);
+                singleButtonDialogWindow.setMessageText(data.Body);
+                singleButtonDialogWindow.setLeftText(data.Button);
+                singleButtonDialogWindow.setLeftCallback(
                     delegate
                     {
-                        dialogWindow.hide();
+                        singleButtonDialogWindow.hide();
 
                     });
-                dialogWindow.setRightButtonActive(false);
-                dialogWindow.show();
+                singleButtonDialogWindow.show();
             }
             else
             {

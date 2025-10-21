@@ -21310,7 +21310,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u91CD\u7F6E"
+  m_text: "\u9690\u79C1\u534F\u8BAE"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
   m_sharedMaterial: {fileID: 6500736313640879830, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
@@ -25511,6 +25511,8 @@ MonoBehaviour:
   titleText: {fileID: 463856952}
   msgText: {fileID: 1263212875}
   btnRight: {fileID: 2030367637}
+  privateDialogController: {fileID: 0}
+  termsDialogController: {fileID: 0}
 --- !u!114 &1731426680 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6610538621801535591, guid: d900f0bdb211a4ce1bfbe979d005ad7f, type: 3}
