@@ -936,12 +936,12 @@ public class GameManager : MonoBehaviour
     {
         if (dialogWindow != null)
         {
-            dialogWindow.setTitleText("Logout Warning!");
-            dialogWindow.setMessageText("Logging out will remove all account information from this device. You may lose access to your game progress. Do you want to continue?");
-            dialogWindow.setLeftText("Cancel");
+            dialogWindow.setTitleText("注销账号");
+            dialogWindow.setMessageText("  请注意！该功能为删除账号所有进度以及账号所有关联信息，删除后将无法恢复。请认真考虑后选择。");
+            dialogWindow.setLeftText("取消");
             dialogWindow.setLeftCallback(OnLogoutCancel);
             dialogWindow.setRightButtonActive(true);
-            dialogWindow.setRightText("Confirm");
+            dialogWindow.setRightText("确认");
             dialogWindow.setRightCallback(OnLogoutConfirm);
             dialogWindow.show();
         }

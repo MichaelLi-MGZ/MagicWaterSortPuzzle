@@ -42,7 +42,7 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.NoAds,
-                price = 100, // 1.00 CNY
+                price = 1000, // 10.00 CNY
                 name = "移除广告",
                 description = "移除游戏中的所有广告",
                 coinAmount = 0,
@@ -51,7 +51,7 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack1,
-                price = 100, // 1.00 CNY
+                price = 1000, // 10.00 CNY
                 name = "250 金币",
                 description = "获得250金币来解锁新物品",
                 coinAmount = 250,
@@ -60,7 +60,7 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack2,
-                price = 200, // 2.00 CNY
+                price = 2000, // 20.00 CNY
                 name = "500 金币",
                 description = "获得500金币来解锁新物品",
                 coinAmount = 500,
@@ -69,7 +69,7 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack3,
-                price = 300, // 3.00 CNY
+                price = 3000, // 30.00 CNY
                 name = "750 金币",
                 description = "获得750金币来解锁新物品",
                 coinAmount = 750,
@@ -78,7 +78,7 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack4,
-                price = 400, // 4.00 CNY
+                price = 4000, // 40.00 CNY
                 name = "1000 金币",
                 description = "获得1000金币来解锁新物品",
                 coinAmount = 1000,
@@ -87,7 +87,7 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack5,
-                price = 500, // 5.00 CNY
+                price = 5000, // 50.00 CNY
                 name = "1500 金币",
                 description = "获得1500金币来解锁新物品",
                 coinAmount = 1500,
@@ -96,7 +96,7 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack6,
-                price = 600, // 6.00 CNY
+                price = 6000, // 60.00 CNY
                 name = "2000 金币",
                 description = "获得2000金币来解锁新物品",
                 coinAmount = 2000,

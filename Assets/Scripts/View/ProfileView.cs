@@ -209,10 +209,9 @@ public class ProfileView : BaseView
     }
 
 
-    public void RestoreAds()
+    public void ShowPrivacyPolicyAndTosDialog()
     {
-        AudioManager.instance.clickBtn.Play();
-        IAPManager.instance.RestorePurchases();
+        DialogService.Instance.ShowPrivacyPolicyAndTosDialog();
     }
 
 }

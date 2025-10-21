@@ -262,7 +262,7 @@ namespace MyGamez.Demo
             }
         }
 
-        private void ShowPrivacyPolicyAndTosDialog()
+        public void ShowPrivacyPolicyAndTosDialog()
         {
             // Show dialog to the player.
             dialogWindow.setLeftCallback(
