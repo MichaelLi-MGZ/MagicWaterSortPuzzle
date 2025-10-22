@@ -178,7 +178,8 @@ namespace MyGamez.Demo
                 error =>
                 {
                     Debug.LogError("Apple Sign-In failed: " + error);
-                    ToastMessage.Show("Apple Sign-In failed. Please try again.");
+                    //ToastMessage.Show("Apple Sign-In failed. Please try again.");
+                    Debug.Log("Apple Sign-In failed. Please try again.");
                     // Show Apple Sign-In dialog again
                     ShowAppleSignInDialog();
                 });
@@ -522,29 +523,35 @@ namespace MyGamez.Demo
                     InitializeAntiaddiction();
                     break;
                 case MySDK.Api.Login.LoginState.LOGIN_FAILED:
-                    ToastMessage.Show("Failed to login");
+                    //ToastMessage.Show("Failed to login");
+                    Debug.Log("Failed to login");
                     if (!playing) // Not in game yet, open login again to retry
                     {
                         Login();
                     }
                     break;
                 case MySDK.Api.Login.LoginState.LOGIN_CANCELED:
-                    ToastMessage.Show("User canceled login");
+                    //ToastMessage.Show("User canceled login");
+                    Debug.Log("User canceled login");
                     break;
                 case MySDK.Api.Login.LoginState.LOGGED_OUT:
-                    ToastMessage.Show("Successfully logged out");
+                    //ToastMessage.Show("Successfully logged out");
+                    Debug.Log("Successfully logged out");
                     // MySDK does not request restart but demo will restart to show login.
                     MySDK.Api.App.RestartApp();
                     break;
                 case MySDK.Api.Login.LoginState.LOGOUT_RESTART:
-                    ToastMessage.Show("Logout restart");
+                    //ToastMessage.Show("Logout restart");
+                    Debug.Log("Logout restart");
                     MySDK.Api.App.RestartApp();
                     break;
                 case MySDK.Api.Login.LoginState.LOGOUT_FAILED:
-                    ToastMessage.Show("Failed to logout");
+                    //ToastMessage.Show("Failed to logout");
+                    Debug.Log("Failed to logout");
                     break;
                 case MySDK.Api.Login.LoginState.LOGOUT_CANCELED:
-                    ToastMessage.Show("User canceled logout");
+                    //ToastMessage.Show("User canceled logout");
+                    Debug.Log("User canceled logout");
                     break;
 
             }
@@ -595,7 +602,8 @@ namespace MyGamez.Demo
                     InitializeAntiaddiction();
                     break;
                 case ResultCode.GENERAL_ERROR:
-                    ToastMessage.Show("Unexpected error, trying again", 1);
+                    //ToastMessage.Show("Unexpected error, trying again", 1);
+                    Debug.Log("Unexpected error, trying again");
                     if (aaInitCounter < 2)
                         InitializeAntiaddiction();
                     else
@@ -680,7 +688,7 @@ namespace MyGamez.Demo
         /// <param name="msg">Additional info on the result</param>
         public override void OnRIDCheckResult(string rid, string name, ResultCode resultCode, string msg)
         {
-            ToastMessage.Show("RID Check result is " + resultCode.ToString(), ToastMessage.LENGTH_LONG);
+            //ToastMessage.Show("RID Check result is " + resultCode.ToString(), ToastMessage.LENGTH_LONG);
             Debug.Log("RID Check result is " + resultCode.ToString());
 
             switch (resultCode)
@@ -881,16 +889,20 @@ namespace MyGamez.Demo
                     // MyGamezGameObject.DoAnnounceCompletedInappPurchase(price, OnIOSPurchaseAcknowledged);
                     break;
                 case MyGamezBridge.EventCode.IapNotAllowedSinglePurchaseLimitExceeded:
-                    ToastMessage.Show("Single purchase limit exceeded");
+                    //ToastMessage.Show("Single purchase limit exceeded");
+                    Debug.Log("Single purchase limit exceeded");
                     break;
                 case MyGamezBridge.EventCode.IapNotAllowedMonthlyPurchaseLimitExceeded:
-                    ToastMessage.Show("Monthly purchase limit exceeded");
+                    //ToastMessage.Show("Monthly purchase limit exceeded");
+                    Debug.Log("Monthly purchase limit exceeded");
                     break;
                 case MyGamezBridge.EventCode.IapNotAllowedInGuestMode:
-                    ToastMessage.Show("IAP not allowed in guest mode");
+                    //ToastMessage.Show("IAP not allowed in guest mode");
+                    Debug.Log("IAP not allowed in guest mode");
                     break;
                 case MyGamezBridge.EventCode.IapNotAllowedAgeCriteriaNotMet:
-                    ToastMessage.Show("IAP not allowed - age criteria not met");
+                    //ToastMessage.Show("IAP not allowed - age criteria not met");
+                    Debug.Log("IAP not allowed - age criteria not met");
                     break;
                 default:
                     Debug.Log("iOS MySDK: Unknown purchase result: " + eventCode);
@@ -941,7 +953,8 @@ namespace MyGamez.Demo
             }
             else
             {
-                ToastMessage.Show("Player is adult. No need to show Store Prompt.", ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Player is adult. No need to show Store Prompt.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult. No need to show Store Prompt.");
             }
         }
 
@@ -955,7 +968,8 @@ namespace MyGamez.Demo
         {
             Debug.Log("mysdk onGetLoginInfoButtonClicked()");
             MySDK.Api.Login.LoginInfo loginInfo = MySDK.Api.Login.GetLoginInfo();
-            ToastMessage.Show(MySDKHelpers.LoginInfoHelper.LoginInfoToString(loginInfo), ToastMessage.LENGTH_LONG);
+            //ToastMessage.Show(MySDKHelpers.LoginInfoHelper.LoginInfoToString(loginInfo), ToastMessage.LENGTH_LONG);
+            Debug.Log(MySDKHelpers.LoginInfoHelper.LoginInfoToString(loginInfo));
         }
 
         public void OnLogoutButtonClicked()
@@ -969,15 +983,19 @@ namespace MyGamez.Demo
 #if UNITY_ANDROID
             int balance = MySDK.Api.AntiAddiction.GetIAPCreditLeft();
             if (balance == int.MaxValue)
-                ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult.");
             else
-                ToastMessage.Show("Remaining balance is " + balance, ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Remaining balance is " + balance, ToastMessage.LENGTH_LONG);
+                Debug.Log("Remaining balance is " + balance);
 #elif UNITY_IOS
             float balance = MyGamezGameObject.GetIapCreditLeft();
             if (balance == float.MaxValue)
-                ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult.");
             else
-                ToastMessage.Show("Remaining balance is " + balance, ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Remaining balance is " + balance, ToastMessage.LENGTH_LONG);
+                Debug.Log("Remaining balance is " + balance);
 #endif
         }
 
@@ -987,15 +1005,19 @@ namespace MyGamez.Demo
 #if UNITY_ANDROID
             long playtime = MySDK.Api.AntiAddiction.GetPlaytimeLeft();
             if (playtime == long.MaxValue)
-                ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult.");
             else
-                ToastMessage.Show("Remaining playtime in ms is " + playtime, ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Remaining playtime in ms is " + playtime, ToastMessage.LENGTH_LONG);
+                Debug.Log("Remaining playtime in ms is " + playtime);
 #elif UNITY_IOS
             int playtime = MyGamezGameObject.GetPlaytimeLeft();
             if (playtime == int.MaxValue)
-                ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult.");
             else
-                ToastMessage.Show("Remaining playtime in ms is " + playtime, ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Remaining playtime in ms is " + playtime, ToastMessage.LENGTH_LONG);
+                Debug.Log("Remaining playtime in ms is " + playtime);
 #endif
         }
     }

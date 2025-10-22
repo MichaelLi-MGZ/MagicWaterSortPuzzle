@@ -51,43 +51,25 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack1,
-                price = 1000, // 10.00 CNY
-                name = "250 金币",
-                description = "获得250金币来解锁新物品",
-                coinAmount = 250,
+                price = 1800, // 18.00 CNY
+                name = "200 金币",
+                description = "获得200金币来解锁新物品",
+                coinAmount = 200,
                 isRemoveAds = false
             },
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack2,
-                price = 2000, // 20.00 CNY
-                name = "500 金币",
-                description = "获得500金币来解锁新物品",
-                coinAmount = 500,
+                price = 5800, // 58.00 CNY
+                name = "800 金币",
+                description = "获得800金币来解锁新物品",
+                coinAmount = 800,
                 isRemoveAds = false
             },
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack3,
-                price = 3000, // 30.00 CNY
-                name = "750 金币",
-                description = "获得750金币来解锁新物品",
-                coinAmount = 750,
-                isRemoveAds = false
-            },
-            new IAPPackageConfig
-            {
-                packageID = IAPPackageID.GoldPack4,
-                price = 4000, // 40.00 CNY
-                name = "1000 金币",
-                description = "获得1000金币来解锁新物品",
-                coinAmount = 1000,
-                isRemoveAds = false
-            },
-            new IAPPackageConfig
-            {
-                packageID = IAPPackageID.GoldPack5,
-                price = 5000, // 50.00 CNY
+                price = 12800, // 128.00 CNY
                 name = "1500 金币",
                 description = "获得1500金币来解锁新物品",
                 coinAmount = 1500,
@@ -95,11 +77,20 @@ public class Config
             },
             new IAPPackageConfig
             {
-                packageID = IAPPackageID.GoldPack6,
-                price = 6000, // 60.00 CNY
-                name = "2000 金币",
-                description = "获得2000金币来解锁新物品",
-                coinAmount = 2000,
+                packageID = IAPPackageID.GoldPack4,
+                price = 18800, // 188.00 CNY
+                name = "3000 金币",
+                description = "获得3000金币来解锁新物品",
+                coinAmount = 3000,
+                isRemoveAds = false
+            },
+            new IAPPackageConfig
+            {
+                packageID = IAPPackageID.GoldPack5,
+                price = 38800, // 388.00 CNY
+                name = "9000 金币",
+                description = "获得9000金币来解锁新物品",
+                coinAmount = 9000,
                 isRemoveAds = false
             }
         };

@@ -90,8 +90,8 @@ namespace MyGamez.Demo.MySDKHelpers
 
 
             // Set Status Text to Demo UI
-            ToastMessage.Show("Billing Result is " + result.ResultCode);
-
+            //ToastMessage.Show("Billing Result is " + result.ResultCode);
+            Debug.Log("Billing Result is " + result.ResultCode);
             // Check if payment was successful
             if (ResultCode.SUCCESS.Equals(result.ResultCode))
             {
@@ -151,7 +151,8 @@ namespace MyGamez.Demo.MySDKHelpers
         // Callback method
         public void OnTextValidation(Features.TextValidation.TextValidationResult result)
         {
-            ToastMessage.Show("Text validation result: " + result.ResultCode);
+            //ToastMessage.Show("Text validation result: " + result.ResultCode);
+            Debug.Log("Text validation result: " + result.ResultCode);
         }
     }
     #endregion

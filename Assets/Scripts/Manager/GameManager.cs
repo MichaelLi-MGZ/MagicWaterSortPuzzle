@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using MyGamez.MySDK.Api;
 
 public class GameManager : MonoBehaviour
 {
@@ -59,6 +60,8 @@ public class GameManager : MonoBehaviour
 
     [Header("Logout Dialog")]
     public DialogWindowController dialogWindow;
+    [Header("Purchase Dialog")]
+    public SingleButtonDialogWindowController singleDialogWindow;
 
     public static GameManager instance;
 
@@ -944,6 +947,32 @@ public class GameManager : MonoBehaviour
             dialogWindow.setRightText("确认");
             dialogWindow.setRightCallback(OnLogoutConfirm);
             dialogWindow.show();
+        }
+        else
+        {
+            Debug.LogError("DialogWindowController not assigned in GameManager!");
+        }
+    }
+
+    public void ShowAgeLimitedDialog()
+    {
+        if (singleDialogWindow != null)
+        {
+            AntiAddiction.PromptDialogData data = AntiAddiction.GetMonthlyPurchaseLimitExceededPromptDialogData();
+
+            // Show dialog to the player.
+            Debug.Log("Age limited button clicked, Title: " + data.Title);
+            Debug.Log("Age limited button clicked, Body: " + data.Body);
+            Debug.Log("Age limited button clicked, Button: " + data.Button);
+            singleDialogWindow.setTitleText(data.Title);
+            singleDialogWindow.setMessageText(data.Body);
+            singleDialogWindow.setLeftText(data.Button);
+            singleDialogWindow.setLeftCallback(
+                delegate
+                {
+                    singleDialogWindow.hide();
+                });
+            singleDialogWindow.show();
         }
         else
         {

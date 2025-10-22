@@ -42,6 +42,8 @@ public class ShopView : BaseView
     public TextMeshProUGUI coinTxt;
 
     public Transform coinIconInBoard;
+
+    public SingleButtonDialogWindowController dialogWindow;
     
 
     public override void InitView()
@@ -697,6 +699,20 @@ public class ShopViewPayCallback : Billing.IPayCallback
             
             // Confirm to MySDK that player has received what they purchased
             result.ConfirmGoodsGiven();
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.LIMITED){
+            Debug.Log("ShopView: Payment limited");
+             // Get Prompt data
+            GameManager.instance.ShowAgeLimitedDialog();
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.CANCELLED){
+            Debug.Log("ShopView: Payment cancelled");
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.FAILED){
+            Debug.Log("ShopView: Payment failed");
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.UNKNOWN){
+            Debug.Log("ShopView: Payment unknown");
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.EMPTY){
+            Debug.Log("ShopView: Payment empty");
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.INVALID){
+            Debug.Log("ShopView: Payment invalid");
         }
         else
         {
