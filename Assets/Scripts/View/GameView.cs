@@ -38,7 +38,7 @@ public class GameView : BaseView
     public void MoreBottle()
     {
         AudioManager.instance.clickBtn.Play();
-        //GameManager.instance.levelGen.AddMoreBottle();
+        GameManager.instance.levelGen.AddMoreBottle();
     }
 
     public void ShowBooster()

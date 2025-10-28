@@ -129,18 +129,23 @@ public class LevelGenerator : MonoBehaviour
 
     }
 
-    /*
+
     public void AddMoreBottle()
     {
         if (CheckFullBottleTotal())
         {
-            GameManager.instance.uiManager.warningView.ShowView("Bottles are full \n Let's try later");
+            GameManager.instance.uiManager.warningView.ShowView("水瓶数量已达最大");
            
         }
         else
-        AdsControl.Instance.ShowRewardedAd(AdsControl.REWARD_TYPE.MORE_BOTTLE);
+        {
+            //TODO: Implement with ads in future
+            //AdsControl.Instance.ShowRewardedAd(AdsControl.REWARD_TYPE.MORE_BOTTLE);
+            UnlockHintBottleCB();
+        }
+        
     }
-    */
+
 
     public void AddHintBottle()
     {
@@ -231,7 +236,9 @@ public class LevelGenerator : MonoBehaviour
 
     public void UnlockHintBottle()
     {
-        WatchAds();
+        //WatchAds();
+        //TODO: Implement with ads in future
+        UnlockHintBottleCB();
     }
 
     public void UnlockHintBottleCB()
@@ -253,15 +260,20 @@ public class LevelGenerator : MonoBehaviour
     public bool CheckFullBottleTotal()
     {
         bool checkFull = false;
-
+        
+        // Count only bottles that are actually in the game (playable bottles)
+        int totalPlayableBottles = GameManager.instance.tubeListInGame.Count;
+        
         if (currentLevel.bottlesInSecondRow.Count > 0)
         {
-            if (currentTubeListInFirstRow.Count == 7 && currentTubeListInSecondRow.Count == 7)
+            // For two-row levels, max is 14 bottles (7 per row)
+            if (totalPlayableBottles >= 14)
                 checkFull = true;
         }
         else if (currentLevel.bottlesInSecondRow.Count == 0)
         {
-            if (currentTubeListInFirstRow.Count == 7)
+            // For single-row levels, max is 7 bottles
+            if (totalPlayableBottles >= 7)
                 checkFull = true;
         }
 
