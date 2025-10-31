@@ -3581,6 +3581,7 @@ GameObject:
   - component: {fileID: 1058870968}
   - component: {fileID: 1058870967}
   - component: {fileID: 1058870971}
+  - component: {fileID: 1058870972}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -3688,10 +3689,37 @@ MonoBehaviour:
   m_GameObject: {fileID: 1058870966}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ac18cb47793d64f6fb28fb75d7b869de, type: 3}
+  m_Script: {fileID: 11500000, guid: 70e1e1d2b6b88464d96783cc6feb028f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   goldAmount: {fileID: 0}
+  dialogWindow: {fileID: 640336964}
+  singleButtonDialogWindow: {fileID: 502922718}
+  warningDialogWindow: {fileID: 1994532612}
+  RIDCheckDialog: {fileID: 2006548522}
+  toastMessage: {fileID: 531282399}
+  notificationBackground: {fileID: 2119831836}
+  ageAppropriateWindowController: {fileID: 538490635}
+  playing: 0
+  previousWindowVisible: 0
+  visibilityCheckInterval: 0.5
+  lastVisibilityCheckTime: 0
+  loginPending: 0
+  mySdkInitCounter: 0
+  aaInitCounter: 0
+  requestGameStartCounter: 0
+--- !u!114 &1058870972
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1058870966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac18cb47793d64f6fb28fb75d7b869de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
   dialogWindow: {fileID: 640336964}
   singleButtonDialogWindow: {fileID: 502922718}
   warningDialogWindow: {fileID: 1994532612}

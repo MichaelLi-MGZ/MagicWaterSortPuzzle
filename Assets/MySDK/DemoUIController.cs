@@ -5,19 +5,13 @@ using UnityEngine.SceneManagement;
 using MyGamez.MySDK.Api;
 using MyGamez.Demo.MySDKHelpers;
 using System;
-#if UNITY_IOS
-using AppleAuth;
-using AppleAuth.Enums;
-using AppleAuth.Interfaces;
-using AppleAuth.Native;
-#endif
+
 
 namespace MyGamez.Demo
 {
     public class DemoUIController : MyGamezObserver
     {
         
-        public TMPro.TMP_Text goldAmount;
         public DialogWindowController dialogWindow;
         public SingleButtonDialogWindowController singleButtonDialogWindow;
         public DialogWindowController warningDialogWindow;
@@ -35,13 +29,8 @@ namespace MyGamez.Demo
         private float lastVisibilityCheckTime = 0f;
         private bool loginPending = false; // Track if login is waiting for window to be hidden
 
-#if UNITY_IOS
-        // Apple Sign-In
-        private IAppleAuthManager appleAuthManager;
-        private bool appleSignInCompleted = false;
-        private string appleUserId = "";
-        private string appleIdToken = "";
-#endif
+        private string accountServerBaseUrl = "https://weixin.mygamez.cn";
+        private IOSLoginController iosLoginController;
 
         private void Awake()
         {
@@ -62,10 +51,8 @@ namespace MyGamez.Demo
         {
             // Monitor window visibility changes
             MonitorWindowVisibility();
-            
 #if UNITY_IOS
-            // Update Apple Sign-In manager
-            appleAuthManager?.Update();
+            iosLoginController?.Update();
 #endif
         }
         
@@ -82,120 +69,64 @@ namespace MyGamez.Demo
             }
         }
 
-        // Start is called before the first frame update
         private void Start()
         {
-            toastMessage.SetActive(false);  // hide until called to show
+            toastMessage.SetActive(false);
             ToastMessage.SetToastObject(toastMessage, this);
-            
+
 #if UNITY_IOS
-            // Initialize Apple Sign-In
-            InitializeAppleSignIn();
+            iosLoginController = new IOSLoginController(this, accountServerBaseUrl, InitializeIOSMySDKWithAppleAuth);
+            Debug.Log("[DemoUIController][iOS] IOSLoginController created with baseUrl=" + accountServerBaseUrl);
 #endif
-            
-            if (! MySDK.Api.Features.PrivacyPolicy.IsPpAccepted())
+
+            Debug.Log("[Startup] HasAcceptedPrivacyPolicy=" + HasAcceptedPrivacyPolicy());
+            if (HasAcceptedPrivacyPolicy())
             {
-                // Player has not accepted PP & ToS earlier
-                ShowPrivacyPolicyAndTosDialog();
+                Debug.Log("[Startup] Privacy Policy accepted, initializing SDK...");
+                InitializeMySDK();
             }
             else
             {
-                Debug.Log("Going to init MySDK");
-                InitializeMySDK();
+                Debug.Log("[Startup] Privacy Policy not accepted, showing dialog...");
+                ShowPrivacyPolicyAndTosDialog();
             }
+        }
+
+        private bool HasAcceptedPrivacyPolicy()
+        {
+#if UNITY_IOS
+                return PlayerPrefs.HasKey("IsPpAccepted") && PlayerPrefs.GetInt("IsPpAccepted") == 1;
+#else
+                return MySDK.Api.Features.PrivacyPolicy.IsPpAccepted();
+#endif
         }
 
         private void InitializeMySDK()
         {
-#if UNITY_ANDROID
-            // Android SDK initialization
-            MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
-#elif UNITY_IOS
-            // iOS SDK initialization - show Apple Sign-In first
-            ShowAppleSignInDialog();
+#if UNITY_IOS
+                Debug.Log("[Startup] Initializing iOS SDK...");
+                Debug.Log("[Startup] Triggering iOS login flow via IOSLoginController.BeginLoginFlow()");
+                iosLoginController.BeginLoginFlow();
 #else
-            // Editor or other platforms - use Android SDK for testing
-            MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
+                Debug.Log("[Startup] Initializing Android/Editor SDK...");
+                MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
 #endif
         }
 
-        private void InitializeIOSMySDK()
-        {
-            Debug.Log("Initializing iOS MySDK");
-            // iOS SDK configuration - you may need to adjust these values
-            string cpid = "your_cpid_here"; // Replace with actual CPID
-            string authParams = "{}"; // Replace with actual auth parameters
-            string backendUrl = "https://your-backend-url.com"; // Replace with actual backend URL
-            
-            MyGamezGameObject.DoInitialize(cpid, backendUrl, authParams, OnIOSSDKInitialized);
-        }
-
 #if UNITY_IOS
-        private void InitializeAppleSignIn()
-        {
-            if (AppleAuthManager.IsCurrentPlatformSupported)
-            {
-                var deserializer = new PayloadDeserializer();
-                appleAuthManager = new AppleAuthManager(deserializer);
-                Debug.Log("Apple Sign-In initialized successfully");
-            }
-            else
-            {
-                Debug.LogError("Apple Sign-In is not supported on this platform");
-            }
-        }
-
-        private void ShowAppleSignInDialog()
-        {
-            Debug.Log("Showing Apple Sign-In dialog");
-            
-            if (appleAuthManager == null)
-            {
-                Debug.LogError("Apple Sign-In manager not initialized");
-                return;
-            }
-
-            var loginArgs = new AppleAuthLoginArgs(LoginOptions.IncludeEmail | LoginOptions.IncludeFullName);
-
-            appleAuthManager.LoginWithAppleId(
-                loginArgs,
-                credential =>
-                {
-                    Debug.Log("Apple Sign-In successful");
-                    if (credential is IAppleIDCredential appleIdCredential)
-                    {
-                        appleUserId = appleIdCredential.User;
-                        appleIdToken = System.Text.Encoding.UTF8.GetString(appleIdCredential.IdentityToken);
-                        appleSignInCompleted = true;
-                        
-                        Debug.Log($"Apple User ID: {appleUserId}");
-                        Debug.Log($"Apple ID Token: {appleIdToken}");
-                        
-                        // Now initialize MySDK with Apple authentication
-                        InitializeIOSMySDKWithAppleAuth();
-                    }
-                },
-                error =>
-                {
-                    Debug.LogError("Apple Sign-In failed: " + error);
-                    //ToastMessage.Show("Apple Sign-In failed. Please try again.");
-                    Debug.Log("Apple Sign-In failed. Please try again.");
-                    // Show Apple Sign-In dialog again
-                    ShowAppleSignInDialog();
-                });
-        }
 
         private void InitializeIOSMySDKWithAppleAuth()
         {
-            Debug.Log("Initializing iOS MySDK with Apple authentication");
+            Debug.Log("[iOS] Initializing MySDK with Apple authentication (post-session)");
             // iOS SDK configuration with Apple authentication
             string cpid = "mygamez_pw"; // Replace with actual CPID
-            string fake_authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"{appleUserId}\"}}";
+            string fake_authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"{iosLoginController?.AppleUserId}\"}}";
             //string authParams = $"{{\"appleUserId\":\"{appleUserId}\",\"appleIdToken\":\"{appleIdToken}\"}}"; // Include Apple auth data
             string backendUrl = "https://antiaddiction.dev.mygamez.cn/api/v1/usr"; // Replace with actual backend URL
             //url = "https://antiaddiction.myservicez.cn/api/v1/usr" // prod
             //url = "https://antiaddiction.dev.mygamez.cn/api/v1/usr" // dev
             
+            Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize cpid=" + cpid + ", backendUrl=" + backendUrl + ", playerIdLen=" + ((iosLoginController?.AppleUserId)?.Length ?? 0));
             MyGamezGameObject.DoInitialize(cpid, backendUrl, fake_authParams, OnIOSSDKInitialized);
         }
 #endif
@@ -282,16 +213,15 @@ namespace MyGamez.Demo
                     // !playing = First start and need to initialise MySDK
                     if (!playing)
                     {
+ #if UNITY_IOS
+                        PlayerPrefs.SetInt("IsPpAccepted", 1); // 1 for accepted, 0 for not accepted
+                        PlayerPrefs.Save();
+#else
                         MySDK.Api.Features.PrivacyPolicy.SetPpAccepted();
-
+#endif
                         // Initialise MySDK
                         Debug.Log("Going to init MySDK");
-#if UNITY_IOS
-                        // Show Apple Sign-In dialog first on iOS
-                        ShowAppleSignInDialog();
-#else
                         InitializeMySDK();
-#endif
                     }
 
                 });
@@ -833,7 +763,6 @@ namespace MyGamez.Demo
             Debug.Log("mysdk DemoUIController::updateTotalGold() gold=" + gold.ToString());
             int totalGold = PlayerPrefs.GetInt("gold", 0);
             totalGold += gold;
-            goldAmount.text = totalGold.ToString();
             PlayerPrefs.SetInt("gold", totalGold);
             PlayerPrefs.Save();
         }
