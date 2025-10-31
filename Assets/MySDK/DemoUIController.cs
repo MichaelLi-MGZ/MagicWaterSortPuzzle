@@ -29,7 +29,6 @@ namespace MyGamez.Demo
         private float lastVisibilityCheckTime = 0f;
         private bool loginPending = false; // Track if login is waiting for window to be hidden
 
-        private string accountServerBaseUrl = "https://weixin.mygamez.cn";
         private IOSLoginController iosLoginController;
 
         private void Awake()
@@ -74,9 +73,11 @@ namespace MyGamez.Demo
             toastMessage.SetActive(false);
             ToastMessage.SetToastObject(toastMessage, this);
 
+            // ServerConfig.BaseUrl is the single source of truth for server URL
+
 #if UNITY_IOS
-            iosLoginController = new IOSLoginController(this, accountServerBaseUrl, InitializeIOSMySDKWithAppleAuth);
-            Debug.Log("[DemoUIController][iOS] IOSLoginController created with baseUrl=" + accountServerBaseUrl);
+            iosLoginController = new IOSLoginController(this, MyGamez.Demo.ServerConfig.BaseUrl, InitializeIOSMySDKWithAppleAuth);
+            Debug.Log("[DemoUIController][iOS] IOSLoginController created with baseUrl=" + MyGamez.Demo.ServerConfig.BaseUrl);
 #endif
 
             Debug.Log("[Startup] HasAcceptedPrivacyPolicy=" + HasAcceptedPrivacyPolicy());

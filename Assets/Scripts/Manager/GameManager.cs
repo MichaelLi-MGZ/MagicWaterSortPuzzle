@@ -4,6 +4,7 @@ using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using MyGamez.MySDK.Api;
+using MyGamez.Demo;
 
 public class GameManager : MonoBehaviour
 {
@@ -744,6 +745,10 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
         currentLv++;
         PlayerPrefs.SetInt("CurrentLevel", currentLv);
+        PlayerPrefs.Save();
+
+        // Save user status to server after level completion
+        UserStatusSync.SaveUserStatus(this);
 
         GameManager.instance.uiManager.profileView.GetAchieData();
 
