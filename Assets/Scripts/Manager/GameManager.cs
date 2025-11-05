@@ -166,6 +166,8 @@ public class GameManager : MonoBehaviour
     public void SaveCoin()
     {
         PlayerPrefs.SetInt("Coin", currentCoin);
+        UserStatusSync.SaveUserStatus(this);
+        Debug.Log("SaveCoin: " + currentCoin);
     }
 
     private void GetCurrentLevel()

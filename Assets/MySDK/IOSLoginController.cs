@@ -19,6 +19,7 @@ namespace MyGamez.Demo
 
 		private IAppleAuthManager appleAuthManager;
 		private string appleUserId = "";
+		private string playerId = "";
 		private string appleIdToken = "";
 
 		// User status configuration now handled by UserStatusSync
@@ -31,9 +32,6 @@ namespace MyGamez.Demo
 		{
 			UserStatusSync.ConfigureKeys(intKeys, keyRenameMap);
 		}
-
-		public string AppleUserId { get { return appleUserId; } }
-		public string AppleIdToken { get { return appleIdToken; } }
 
 		public IOSLoginController(MonoBehaviour host, string authServerBaseUrl, Action onSessionReady)
 		{
@@ -55,6 +53,69 @@ namespace MyGamez.Demo
 		{
 			Debug.Log("[IOSLoginController] BeginLoginFlow: starting session check or Apple Sign-In");
 			host.StartCoroutine(CheckSessionAndProceed());
+		}
+
+		/// <summary>
+		/// Request a JWT from the backend using current player id. Calls onDone with the token or null on failure.
+		/// </summary>
+		public void RequestJwtToken(string env, string appName, Action<string> onDone)
+		{
+			if (string.IsNullOrEmpty(playerId))
+			{
+				Debug.LogWarning("[IOSLoginController] RequestJwtToken called but playerId is empty");
+			}
+			host.StartCoroutine(RequestJwtCoroutine(env, appName, onDone));
+		}
+
+		private IEnumerator RequestJwtCoroutine(string env, string appName, Action<string> onDone)
+		{
+
+			
+			long iat = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+			var payload = new Dictionary<string, object>
+			{
+				{"player_id", playerId},
+				{"iat", iat},
+				{"app", appName}
+			};
+			var json = MiniJSON.Json.Serialize(payload);
+			var url = ServerConfig.BaseUrl.TrimEnd('/') + "/api/mws/jwt/sign?env=" + (string.IsNullOrEmpty(env) ? "dev" : env);
+			Debug.Log("[IOSLoginController] Requesting JWT: url=" + url + ", payloadLen=" + (json == null ? 0 : json.Length));
+			Debug.Log("[IOSLoginController] Requesting JWT: url=" + url + ", payload=" + (json == null ? 0 : json));
+			yield return PostJson(url, json, (ok, respJson) =>
+			{
+				if (!ok || string.IsNullOrEmpty(respJson))
+				{
+					Debug.LogError("[IOSLoginController] JWT sign request failed");
+					onDone?.Invoke(null);
+					return;
+				}
+				try
+				{
+					var root = MiniJSON.Json.Deserialize(respJson) as System.Collections.IDictionary;
+					if (root == null || !root.Contains("code") || Convert.ToInt32(root["code"]) != 0)
+					{
+						Debug.LogError("[IOSLoginController] JWT sign returned error: " + respJson);
+						onDone?.Invoke(null);
+						return;
+					}
+					var data = root["data"] as System.Collections.IDictionary;
+					string token = data != null && data.Contains("token") ? (string)data["token"] : null;
+					if (string.IsNullOrEmpty(token))
+					{
+						Debug.LogError("[IOSLoginController] JWT token missing in response");
+						onDone?.Invoke(null);
+						return;
+					}
+					Debug.Log("[IOSLoginController] JWT received, len=" + token.Length);
+					onDone?.Invoke(token);
+				}
+				catch (Exception e)
+				{
+					Debug.LogError("[IOSLoginController] Parse JWT sign response failed: " + e);
+					onDone?.Invoke(null);
+				}
+			});
 		}
 
 		private void InitializeAppleSignIn()
@@ -101,8 +162,8 @@ namespace MyGamez.Demo
 					{
 						var data = resp["data"] as System.Collections.IDictionary;
 						var newToken = data["session_token"] as string;
-                        appleUserId = data["player_id"] as string ?? "";
-                        Debug.Log("[IOSLoginController] Session check ok, player_id=" + appleUserId);
+                        playerId = data["player_id"] as string ?? "";
+                        Debug.Log("[IOSLoginController] Session check ok, player_id=" + playerId);
 						if (!string.IsNullOrEmpty(newToken))
 						{
 							Debug.Log("[IOSLoginController] Session check ok, refreshing session_token (len=" + newToken.Length + ")");
@@ -147,7 +208,7 @@ namespace MyGamez.Demo
 					{
 						appleUserId = appleIdCredential.User;
 						appleIdToken = Encoding.UTF8.GetString(appleIdCredential.IdentityToken);
-						Debug.Log("[IOSLoginController] Apple Sign-In success: userIdLen=" + (appleUserId == null ? 0 : appleUserId.Length) + ", tokenLen=" + (appleIdToken == null ? 0 : appleIdToken.Length));
+						Debug.Log("[IOSLoginController] Apple Sign-In success: appleUserIdLen=" + (appleUserId == null ? 0 : appleUserId.Length) + ", tokenLen=" + (appleIdToken == null ? 0 : appleIdToken.Length));
 						host.StartCoroutine(ExchangeAppleForSessionAndProceed(appleUserId, appleIdToken));
 					}
 				},
@@ -159,13 +220,13 @@ namespace MyGamez.Demo
 				});
 		}
 
-		private IEnumerator ExchangeAppleForSessionAndProceed(string userId, string idToken)
+		private IEnumerator ExchangeAppleForSessionAndProceed(string appleUserId, string idToken)
 		{
-			Debug.Log("[IOSLoginController] ExchangeAppleForSessionAndProceed: userIdLen=" + (string.IsNullOrEmpty(userId) ? 0 : userId.Length) + ", tokenLen=" + (string.IsNullOrEmpty(idToken) ? 0 : idToken.Length));
+			Debug.Log("[IOSLoginController] ExchangeAppleForSessionAndProceed: appleUserIdLen=" + (string.IsNullOrEmpty(appleUserId) ? 0 : appleUserId.Length) + ", tokenLen=" + (string.IsNullOrEmpty(idToken) ? 0 : idToken.Length));
 			var url = ServerConfig.BaseUrl + "/api/apple/signin";
 			var body = new Dictionary<string, object>
 			{
-				{"appleUserId", userId},
+				{"appleUserId", appleUserId},
 				{"identityToken", idToken},
 				{"device", "ios"}
 			};
@@ -187,6 +248,8 @@ namespace MyGamez.Demo
 					{
 						var data = resp["data"] as System.Collections.IDictionary;
 						var token = data["session_token"] as string;
+						playerId = data["player_id"] as string ?? "";
+						Debug.Log("[IOSLoginController] Apple signin exchange ok, player_id=" + playerId);
 						if (!string.IsNullOrEmpty(token))
 						{
 							Debug.Log("[IOSLoginController] Apple signin exchange ok, storing session_token (len=" + token.Length + ")");

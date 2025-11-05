@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 using MyGamez.MySDK.Api;
 using MyGamez.Demo.MySDKHelpers;
 using System;
+using UnityEngine.Networking;
 
 
 namespace MyGamez.Demo
@@ -119,17 +120,31 @@ namespace MyGamez.Demo
         private void InitializeIOSMySDKWithAppleAuth()
         {
             Debug.Log("[iOS] Initializing MySDK with Apple authentication (post-session)");
-            // iOS SDK configuration with Apple authentication
-            string cpid = "mygamez_pw"; // Replace with actual CPID
-            string fake_authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"{iosLoginController?.AppleUserId}\"}}";
-            //string authParams = $"{{\"appleUserId\":\"{appleUserId}\",\"appleIdToken\":\"{appleIdToken}\"}}"; // Include Apple auth data
-            string backendUrl = "https://antiaddiction.dev.mygamez.cn/api/v1/usr"; // Replace with actual backend URL
-            //url = "https://antiaddiction.myservicez.cn/api/v1/usr" // prod
-            //url = "https://antiaddiction.dev.mygamez.cn/api/v1/usr" // dev
-            
-            Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize cpid=" + cpid + ", backendUrl=" + backendUrl + ", playerIdLen=" + ((iosLoginController?.AppleUserId)?.Length ?? 0));
-            MyGamezGameObject.DoInitialize(cpid, backendUrl, fake_authParams, OnIOSSDKInitialized);
+			// iOS SDK configuration with Apple authentication via JWT
+			StartCoroutine(RequestJwtAndInit());
         }
+
+		private System.Collections.IEnumerator RequestJwtAndInit()
+		{
+			// Delegate JWT fetching to IOSLoginController, keep only initialization here
+			bool done = false;
+            string env = "prod";
+            string appName = "magicwatersort";
+			string receivedToken = null;
+			iosLoginController.RequestJwtToken(env, appName, token => { receivedToken = token; done = true; });
+			while (!done) yield return null;
+			if (string.IsNullOrEmpty(receivedToken))
+			{
+				Debug.LogError("[iOS] Failed to obtain JWT token");
+				yield break;
+			}
+			string cpid = "porioffice"; // Replace with actual CPID
+			string backendUrl = env == "dev" ? "https://antiaddiction.dev.mygamez.cn/api/v1/usr" : "https://antiaddiction.myservicez.cn/api/v1/usr"; // Replace with actual backend URL
+			string authParams = "{\"jwt\":\"" + receivedToken + "\"}";
+            Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (token=" + receivedToken + ")");
+			Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (len=" + receivedToken.Length + ")");
+			MyGamezGameObject.DoInitialize(cpid, backendUrl, authParams, OnIOSSDKInitialized);
+		}
 #endif
 
         private void OnIOSSDKInitialized(MyGamezBridge.EventCode eventCode)
