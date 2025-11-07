@@ -961,19 +961,49 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void ShowAgeLimitedDialog()
+    public void ShowAgeLimitedDialog(int type)
+    {
+        if (MyGamezGameObject.IsAdult())
+        {
+            Debug.Log("Player is adult, skipping age limited dialog");
+            return;
+        }
+        if (singleDialogWindow != null)
+        {
+#if UNITY_IOS
+            Debug.Log("IOS: Show Age Limited Dialog, type: " + type);
+            MyGamezGameObject.DoRequestPromptCallback(type, ShowPromptDialogCallback);
+#else
+            if (type == 6) // Store Enter
+            {
+                AntiAddiction.PromptDialogData data = AntiAddiction.GetStoreEnterPromptDialogData();
+                ShowPromptDialogCallback(data.Title, data.Body, data.Button);
+            }
+            else
+            {
+                AntiAddiction.PromptDialogData data = AntiAddiction.GetMonthlyPurchaseLimitExceededPromptDialogData();
+                ShowPromptDialogCallback(data.Title, data.Body, data.Button);
+            }
+
+#endif
+        }
+        else
+        {
+            Debug.LogError("DialogWindowController not assigned in GameManager!");
+        }
+    }
+
+
+    private void ShowPromptDialogCallback(string title, string body, string button)
     {
         if (singleDialogWindow != null)
         {
-            AntiAddiction.PromptDialogData data = AntiAddiction.GetMonthlyPurchaseLimitExceededPromptDialogData();
-
-            // Show dialog to the player.
-            Debug.Log("Age limited button clicked, Title: " + data.Title);
-            Debug.Log("Age limited button clicked, Body: " + data.Body);
-            Debug.Log("Age limited button clicked, Button: " + data.Button);
-            singleDialogWindow.setTitleText(data.Title);
-            singleDialogWindow.setMessageText(data.Body);
-            singleDialogWindow.setLeftText(data.Button);
+            Debug.Log("Show PromptDialog, Title: " + title);
+            Debug.Log("Show PromptDialog, Body: " + body);
+            Debug.Log("Show PromptDialog, Button: " + button);
+            singleDialogWindow.setTitleText(title);
+            singleDialogWindow.setMessageText(body);
+            singleDialogWindow.setLeftText(button);
             singleDialogWindow.setLeftCallback(
                 delegate
                 {
@@ -986,6 +1016,8 @@ public class GameManager : MonoBehaviour
             Debug.LogError("DialogWindowController not assigned in GameManager!");
         }
     }
+
+
 
     private void OnLogoutCancel()
     {

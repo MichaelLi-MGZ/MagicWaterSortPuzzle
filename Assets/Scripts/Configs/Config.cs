@@ -78,7 +78,7 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack4,
-                price = 18800, // 188.00 CNY
+                price = 19800, // 198.00 CNY
                 name = "3000 金币",
                 description = "获得3000金币来解锁新物品",
                 coinAmount = 3000,
@@ -87,7 +87,7 @@ public class Config
             new IAPPackageConfig
             {
                 packageID = IAPPackageID.GoldPack5,
-                price = 38800, // 388.00 CNY
+                price = 39800, // 398.00 CNY
                 name = "9000 金币",
                 description = "获得9000金币来解锁新物品",
                 coinAmount = 9000,

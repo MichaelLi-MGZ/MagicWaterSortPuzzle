@@ -1,285 +1,357 @@
-using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Purchasing;
+using UnityEngine.Purchasing.Extension;
+using UnityEngine.Networking;
+using System;
+using System.Text;
+using MiniJSON;
 
-public class IAPManager : MonoBehaviour, IStoreListener
+public class IAPManager : MonoBehaviour, IDetailedStoreListener
 {
-
-    public static IAPManager instance;
-    private static IStoreController m_StoreController;          // The Unity Purchasing system.
-    private static IExtensionProvider m_StoreExtensionProvider; // The store-specific Purchasing subsystems.
-
-    // Product identifiers for all products capable of being purchased: 
-    // "convenience" general identifiers for use with Purchasing, and their store-specific identifier 
-    // counterparts for use with and outside of Unity Purchasing. Define store-specific identifiers 
-    // also on each platform's publisher dashboard (iTunes Connect, Google Play Developer Console, etc.)
-
-    // General product identifiers for the consumable, non-consumable, and subscription products.
-    // Use these handles in the code to reference which product to purchase. Also use these values 
-    // when defining the Product Identifiers on the store. Except, for illustration purposes, the 
-    // kProductIDSubscription - it has custom Apple and Google identifiers. We declare their store-
-    // specific mapping to Unity Purchasing's AddProduct, below.
-    public static string kProductIDConsumable = "consumable";
-    public static string kProductIDNonConsumable = "nonconsumable";
-    public static string kProductIDSubscription = "subscription";
-
-    // Apple App Store-specific product identifier for the subscription product.
-    private static string kProductNameAppleSubscription = "com.unity3d.subscription.new";
-
-    // Google Play Store-specific product identifier subscription product.
-    private static string kProductNameGooglePlaySubscription = "com.unity3d.subscription.original";
-
-    public enum IAP_CALLBACK_STATE
+    private static IAPManager instance;
+    public static IAPManager Instance
     {
-        SUCCESS,
-        FAIL
+        get
+        {
+            if (instance == null)
+            {
+                GameObject go = new GameObject("IAPManager");
+                instance = go.AddComponent<IAPManager>();
+                DontDestroyOnLoad(go);
+            }
+            return instance;
+        }
     }
 
-    private Action<string, IAP_CALLBACK_STATE> PurchaserManager_Callback = delegate (string _iapID, IAP_CALLBACK_STATE _callBackState) { };
-    public static Action InitializeSucceeded;
-    public static event Action RestoreCompleted;
-    public static event Action RestoreFailed;
+    private IStoreController storeController;
+    private IExtensionProvider extensionProvider;
+    private bool isInitialized = false;
 
+    // Mapping from package ID to Apple product ID
+    // IMPORTANT: Replace these with your actual product IDs from App Store Connect
+    // Product IDs must match exactly what you configured in App Store Connect
+    private Dictionary<Config.IAPPackageID, string> productIdMap = new Dictionary<Config.IAPPackageID, string>
+    {
+        { Config.IAPPackageID.NoAds, "com.mygamez.magicwatersort.removeads" },
+        { Config.IAPPackageID.GoldPack1, "com.mygamez.magicwatersort.goldpack1" },
+        { Config.IAPPackageID.GoldPack2, "com.mygamez.magicwatersort.goldpack2" },
+        { Config.IAPPackageID.GoldPack3, "com.mygamez.magicwatersort.goldpack3" },
+        { Config.IAPPackageID.GoldPack4, "com.mygamez.magicwatersort.goldpack4" },
+        { Config.IAPPackageID.GoldPack5, "com.mygamez.magicwatersort.goldpack5" },
+        { Config.IAPPackageID.GoldPack6, "com.mygamez.magicwatersort.goldpack6" },
+    };
+
+    // Callback for purchase completion
+    private Action<Config.IAPPackageID, bool, string> onPurchaseComplete;
+    
+    // Server URL for receipt verification
+    private string serverBaseUrl = "https://weixin.mygamez.cn";
 
     private void Awake()
     {
-        instance = this;
-        DontDestroyOnLoad(this);
-    }
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        // If we haven't set up the Unity Purchasing reference
-        if (m_StoreController == null)
+        if (instance == null)
         {
-            // Begin to configure our connection to Purchasing
+            instance = this;
+            DontDestroyOnLoad(gameObject);
             InitializePurchasing();
+        }
+        else if (instance != this)
+        {
+            Destroy(gameObject);
         }
     }
 
-    // Update is called once per frame
-    void Update()
+    private void InitializePurchasing()
     {
-
-    }
-
-    public void InitializePurchasing()
-    {
-        // If we have already connected to Purchasing ...
-        if (IsInitialized())
+        if (isInitialized)
         {
-            // ... we are done here.
+            Debug.Log("[IAPManager] Already initialized");
             return;
         }
 
-        // Create a builder, first passing in a suite of Unity provided stores.
         var builder = ConfigurationBuilder.Instance(StandardPurchasingModule.Instance());
 
-        // Add a product to sell / restore by way of its identifier, associating the general identifier
-        // with its store-specific identifiers.
-        //builder.AddProduct(kProductIDConsumable, ProductType.Consumable);
-        //// Continue adding the non-consumable product.
-        //builder.AddProduct(kProductIDNonConsumable, ProductType.NonConsumable);
-        //// And finish adding the subscription product. Notice this uses store-specific IDs, illustrating
-        //// if the Product ID was configured differently between Apple and Google stores. Also note that
-        //// one uses the general kProductIDSubscription handle inside the game - the store-specific IDs 
-        //// must only be referenced here. 
-        foreach (string iapID in Enum.GetNames(typeof(Config.IAPPackageID)))
+        // Add all products to the builder
+        foreach (var kvp in productIdMap)
         {
-            builder.AddProduct(iapID, ProductType.Consumable);
+            builder.AddProduct(kvp.Value, ProductType.Consumable);
+            Debug.Log($"[IAPManager] Added product: {kvp.Value} for package {kvp.Key}");
         }
 
-
-        // Kick off the remainder of the set-up with an asynchrounous call, passing the configuration 
-        // and this class' instance. Expect a response either in OnInitialized or OnInitializeFailed.
         UnityPurchasing.Initialize(this, builder);
     }
 
-
-    public bool IsInitialized()
-    {
-        // Only say we are initialized if both the Purchasing references are set.
-        return m_StoreController != null && m_StoreExtensionProvider != null;
-    }
-
-    public void BuyConsumable(Config.IAPPackageID iapID, Action<string, IAP_CALLBACK_STATE> _purchaserManager_Callback)
-    {
-        PurchaserManager_Callback = _purchaserManager_Callback;
-        // Buy the consumable product using its general identifier. Expect a response either 
-        // through ProcessPurchase or OnPurchaseFailed asynchronously.
-        BuyProductID(iapID.ToString());
-    }
-
-
-    public void BuyNonConsumable(Config.IAPPackageID iapID, Action<string, IAP_CALLBACK_STATE> _purchaserManager_Callback)
-    {
-        PurchaserManager_Callback = _purchaserManager_Callback;
-        // Buy the non-consumable product using its general identifier. Expect a response either 
-        // through ProcessPurchase or OnPurchaseFailed asynchronously.
-        BuyProductID(iapID.ToString());
-    }
-    public void BuyNonConsumable()
-    {
-        // Buy the non-consumable product using its general identifier. Expect a response either 
-        // through ProcessPurchase or OnPurchaseFailed asynchronously.
-        BuyProductID(kProductIDNonConsumable);
-    }
-
-
-    public void BuySubscription()
-    {
-        // Buy the subscription product using its the general identifier. Expect a response either 
-        // through ProcessPurchase or OnPurchaseFailed asynchronously.
-        // Notice how we use the general product identifier in spite of this ID being mapped to
-        // custom store-specific identifiers above.
-        BuyProductID(kProductIDSubscription);
-    }
-
-    void BuyProductID(string productId)
-    {
-        //
-        // If Purchasing has been initialized ...
-        if (IsInitialized())
-        {
-            // ... look up the Product reference with the general product identifier and the Purchasing 
-            // system's products collection.
-            Product product = m_StoreController.products.WithID(productId);
-
-            // If the look up found a product for this device's store and that product is ready to be sold ... 
-            if (product != null && product.availableToPurchase)
-            {
-                Debug.Log(string.Format("Purchasing product asychronously: '{0}'", product.definition.id));
-                // ... buy the product. Expect a response either through ProcessPurchase or OnPurchaseFailed 
-                // asynchronously.
-                m_StoreController.InitiatePurchase(product);
-            }
-            // Otherwise ...
-            else
-            {
-                // ... report the product look-up failure situation  
-                Debug.Log("BuyProductID: FAIL. Not purchasing product, either is not found or is not available for purchase");
-            }
-        }
-        // Otherwise ...
-        else
-        {
-            // ... report the fact Purchasing has not succeeded initializing yet. Consider waiting longer or 
-            // retrying initiailization.
-            Debug.Log("BuyProductID FAIL. Not initialized.");
-            PurchaserManager_Callback.Invoke(productId, IAP_CALLBACK_STATE.FAIL);
-        }
-        //#endif
-    }
-
-
-    // Restore purchases previously made by this customer. Some platforms automatically restore purchases, like Google. 
-    // Apple currently requires explicit purchase restoration for IAP, conditionally displaying a password prompt.
-    public void RestorePurchases()
-    {
-        // If Purchasing has not yet been set up ...
-        if (!IsInitialized())
-        {
-            // ... report the situation and stop restoring. Consider either waiting longer, or retrying initialization.
-            Debug.Log("RestorePurchases FAIL. Not initialized.");
-            return;
-        }
-
-        // If we are running on an Apple device ... 
-        if (Application.platform == RuntimePlatform.IPhonePlayer ||
-            Application.platform == RuntimePlatform.OSXPlayer)
-        {
-            // ... begin restoring purchases
-            Debug.Log("RestorePurchases started ...");
-
-            // Fetch the Apple store-specific subsystem.
-            var apple = m_StoreExtensionProvider.GetExtension<IAppleExtensions>();
-            // Begin the asynchronous process of restoring purchases. Expect a confirmation response in 
-            // the Action<bool> below, and ProcessPurchase if there are previously purchased products to restore.
-            apple.RestoreTransactions((result) => {
-                // The first phase of restoration. If no more responses are received on ProcessPurchase then 
-                // no purchases are available to be restored.
-                Debug.Log("RestorePurchases continuing: " + result + ". If no further messages, no purchases available to restore.");
-            });
-        }
-        // Otherwise ...
-        else
-        {
-            // We are not running on an Apple device. No work is necessary to restore purchases.
-            Debug.Log("RestorePurchases FAIL. Not supported on this platform. Current = " + Application.platform);
-        }
-    }
-
-
-
     public void OnInitialized(IStoreController controller, IExtensionProvider extensions)
     {
-        // Purchasing has succeeded initializing. Collect our Purchasing references.
-        Debug.Log("OnInitialized: PASS");
-
-        // Overall Purchasing system, configured with products for this application.
-        m_StoreController = controller;
-        // Store specific subsystem, for accessing device-specific store features.
-        m_StoreExtensionProvider = extensions;
+        Debug.Log("[IAPManager] Initialization successful");
+        storeController = controller;
+        extensionProvider = extensions;
+        isInitialized = true;
     }
 
     public void OnInitializeFailed(InitializationFailureReason error)
     {
-        throw new NotImplementedException();
+        Debug.LogError($"[IAPManager] Initialization failed: {error}");
+        isInitialized = false;
     }
 
     public void OnInitializeFailed(InitializationFailureReason error, string message)
     {
-        throw new NotImplementedException();
+        Debug.LogError($"[IAPManager] Initialization failed: {error}, {message}");
+        isInitialized = false;
     }
 
-    public void OnPurchaseFailed(UnityEngine.Purchasing.Product product, PurchaseFailureReason failureReason)
+    /// <summary>
+    /// Initiate a purchase for the given package ID
+    /// </summary>
+    /// <param name="packageID">The package to purchase</param>
+    /// <param name="onComplete">Callback: (packageID, success, errorMessage)</param>
+    public void PurchaseProduct(Config.IAPPackageID packageID, Action<Config.IAPPackageID, bool, string> onComplete)
     {
-        Debug.Log(string.Format("OnPurchaseFailed: FAIL. Product: '{0}', PurchaseFailureReason: {1}", product.definition.storeSpecificId, failureReason));
-        PurchaserManager_Callback.Invoke(product.definition.id, IAP_CALLBACK_STATE.FAIL);
+        if (!isInitialized)
+        {
+            Debug.LogError("[IAPManager] Store not initialized yet");
+            onComplete?.Invoke(packageID, false, "Store not initialized");
+            return;
+        }
+
+        if (!productIdMap.ContainsKey(packageID))
+        {
+            Debug.LogError($"[IAPManager] Product ID not found for package: {packageID}");
+            onComplete?.Invoke(packageID, false, $"Product ID not found for package: {packageID}");
+            return;
+        }
+
+        string productId = productIdMap[packageID];
+        Product product = storeController.products.WithID(productId);
+
+        if (product == null || !product.availableToPurchase)
+        {
+            Debug.LogError($"[IAPManager] Product not available: {productId}");
+            onComplete?.Invoke(packageID, false, $"Product not available: {productId}");
+            return;
+        }
+
+        Debug.Log($"[IAPManager] Purchasing product: {productId} for package: {packageID}");
+        onPurchaseComplete = onComplete;
+        storeController.InitiatePurchase(product);
     }
 
     public PurchaseProcessingResult ProcessPurchase(PurchaseEventArgs args)
     {
-        //Return a flag indicating whether this product has completely been received, or if the application needs
-        // to be reminded of this purchase at next app launch.Use PurchaseProcessingResult.Pending when still
-        //saving purchased products to the cloud, and when that save is delayed.
-        bool validPurchase = true; // Presume valid for platforms with no R.V.
+        Debug.Log($"[IAPManager] Purchase successful: {args.purchasedProduct.definition.id}");
 
-        if (validPurchase)
+        // Find the package ID from the product ID
+        Config.IAPPackageID? packageID = null;
+        foreach (var kvp in productIdMap)
         {
-            // Unlock the appropriate content here.
-            PurchaserManager_Callback.Invoke(args.purchasedProduct.definition.id, IAP_CALLBACK_STATE.SUCCESS);
-            Debug.Log(string.Format("ProcessPurchase: PASS. Product: '{0}'", args.purchasedProduct.definition.id));
-        }
-        else
-        {
-            PurchaserManager_Callback.Invoke(args.purchasedProduct.definition.id, IAP_CALLBACK_STATE.FAIL);
+            if (kvp.Value == args.purchasedProduct.definition.id)
+            {
+                packageID = kvp.Key;
+                break;
+            }
         }
 
-        return PurchaseProcessingResult.Complete;
+        if (!packageID.HasValue)
+        {
+            Debug.LogError($"[IAPManager] Could not find package ID for product: {args.purchasedProduct.definition.id}");
+            onPurchaseComplete?.Invoke(Config.IAPPackageID.GoldPack1, false, "Unknown product");
+            return PurchaseProcessingResult.Complete;
+        }
 
+        // Extract receipt data for verification
+        string receiptData = ExtractReceiptData(args.purchasedProduct);
+        if (string.IsNullOrEmpty(receiptData))
+        {
+            Debug.LogError("[IAPManager] Failed to extract receipt data");
+            onPurchaseComplete?.Invoke(packageID.Value, false, "Failed to extract receipt");
+            return PurchaseProcessingResult.Complete;
+        }
+
+        // Verify receipt with backend server
+        StartCoroutine(VerifyReceiptWithServer(packageID.Value, receiptData, args.purchasedProduct.definition.id));
+
+        // Return Pending - we'll complete after server verification
+        return PurchaseProcessingResult.Pending;
     }
 
-    public string GetLocalizedPriceString(string iapID)
+    /// <summary>
+    /// Extract receipt data from the purchased product
+    /// </summary>
+    private string ExtractReceiptData(Product product)
     {
-#if UNITY_EDITOR
-        return "0.01$";
-#endif
-        //Debug.Log("GetLocalizedPriceString:"+ iapID);
-        var product = m_StoreController.products.WithID(iapID);
-        //Debug.Log("GetLocalizedPriceString:" + product);
-        //Debug.Log("GetLocalizedPriceString:" + product.metadata.localizedPriceString);
-        if (product != null)
+        try
         {
-            return product.metadata.localizedPriceString;
+            // For iOS, the receipt is in product.receipt
+            // Unity IAP provides the receipt as a JSON string
+            if (!string.IsNullOrEmpty(product.receipt))
+            {
+                Debug.Log($"[IAPManager] Extracted receipt data, length: {product.receipt.Length}");
+                return product.receipt;
+            }
+
+            Debug.LogWarning("[IAPManager] No receipt data found in product");
+            return null;
         }
-        else
+        catch (Exception e)
         {
-            return "0.01$";
+            Debug.LogError($"[IAPManager] Error extracting receipt: {e}");
+            return null;
         }
-
-
     }
 
+    /// <summary>
+    /// Verify receipt with backend server
+    /// </summary>
+    private IEnumerator VerifyReceiptWithServer(Config.IAPPackageID packageID, string receiptData, string productId)
+    {
+        string url = serverBaseUrl + "/api/apple/verify_receipt";
+        
+        // Prepare payload
+        var payload = new Dictionary<string, object>
+        {
+            {"receipt_data", receiptData},
+            {"product_id", productId},
+            {"package_id", packageID.ToString()}
+        };
+
+        string json = Json.Serialize(payload);
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+        Debug.Log($"[IAPManager] Verifying receipt with server: {url}");
+
+        using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
+        {
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"[IAPManager] Receipt verification request failed: {request.error}");
+                onPurchaseComplete?.Invoke(packageID, false, $"Verification request failed: {request.error}");
+                yield break;
+            }
+
+            string responseText = request.downloadHandler.text;
+            Debug.Log($"[IAPManager] Receipt verification response: {responseText}");
+
+            try
+            {
+                var response = Json.Deserialize(responseText) as Dictionary<string, object>;
+                if (response != null && response.ContainsKey("code"))
+                {
+                    int code = Convert.ToInt32(response["code"]);
+                    if (code == 0)
+                    {
+                        // Verification successful
+                        Debug.Log("[IAPManager] Receipt verified successfully by server");
+                        onPurchaseComplete?.Invoke(packageID, true, null);
+                        
+                        // Complete the purchase
+                        if (storeController != null)
+                        {
+                            Product product = storeController.products.WithID(productId);
+                            if (product != null)
+                            {
+                                storeController.ConfirmPendingPurchase(product);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        string errorMsg = response.ContainsKey("message") ? response["message"].ToString() : "Verification failed";
+                        Debug.LogError($"[IAPManager] Receipt verification failed: {errorMsg}");
+                        onPurchaseComplete?.Invoke(packageID, false, errorMsg);
+                    }
+                }
+                else
+                {
+                    Debug.LogError("[IAPManager] Invalid response format from server");
+                    onPurchaseComplete?.Invoke(packageID, false, "Invalid server response");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[IAPManager] Error parsing verification response: {e}");
+                onPurchaseComplete?.Invoke(packageID, false, $"Parse error: {e.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Set the server base URL for receipt verification
+    /// </summary>
+    public void SetServerBaseUrl(string url)
+    {
+        if (!string.IsNullOrEmpty(url))
+        {
+            serverBaseUrl = url.TrimEnd('/');
+            Debug.Log($"[IAPManager] Server base URL set to: {serverBaseUrl}");
+        }
+    }
+
+    public void OnPurchaseFailed(Product product, PurchaseFailureReason failureReason)
+    {
+        Debug.LogError($"[IAPManager] Purchase failed: {product.definition.id}, Reason: {failureReason}");
+
+        // Find the package ID
+        Config.IAPPackageID? packageID = null;
+        foreach (var kvp in productIdMap)
+        {
+            if (kvp.Value == product.definition.id)
+            {
+                packageID = kvp.Key;
+                break;
+            }
+        }
+
+        if (packageID.HasValue)
+        {
+            string errorMessage = failureReason.ToString();
+            onPurchaseComplete?.Invoke(packageID.Value, false, errorMessage);
+        }
+    }
+
+    public void OnPurchaseFailed(Product product, PurchaseFailureDescription failureDescription)
+    {
+        Debug.LogError($"[IAPManager] Purchase failed: {product.definition.id}, Reason: {failureDescription.reason}, Message: {failureDescription.message}");
+
+        // Find the package ID
+        Config.IAPPackageID? packageID = null;
+        foreach (var kvp in productIdMap)
+        {
+            if (kvp.Value == product.definition.id)
+            {
+                packageID = kvp.Key;
+                break;
+            }
+        }
+
+        if (packageID.HasValue)
+        {
+            onPurchaseComplete?.Invoke(packageID.Value, false, failureDescription.message);
+        }
+    }
+
+    /// <summary>
+    /// Get the Apple product ID for a package
+    /// </summary>
+    public string GetProductId(Config.IAPPackageID packageID)
+    {
+        return productIdMap.ContainsKey(packageID) ? productIdMap[packageID] : null;
+    }
+
+    /// <summary>
+    /// Check if the store is initialized and ready
+    /// </summary>
+    public bool IsReady()
+    {
+        return isInitialized && storeController != null;
+    }
 }
+

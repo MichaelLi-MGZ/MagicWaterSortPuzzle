@@ -79,7 +79,7 @@ namespace MyGamez.Demo
 				{"app", appName}
 			};
 			var json = MiniJSON.Json.Serialize(payload);
-			var url = ServerConfig.BaseUrl.TrimEnd('/') + "/api/mws/jwt/sign?env=" + (string.IsNullOrEmpty(env) ? "dev" : env);
+			var url = ServerConfig.BaseUrl.TrimEnd('/') + "/api/apple/jwt/sign?env=" + (string.IsNullOrEmpty(env) ? "dev" : env);
 			Debug.Log("[IOSLoginController] Requesting JWT: url=" + url + ", payloadLen=" + (json == null ? 0 : json.Length));
 			Debug.Log("[IOSLoginController] Requesting JWT: url=" + url + ", payload=" + (json == null ? 0 : json));
 			yield return PostJson(url, json, (ok, respJson) =>

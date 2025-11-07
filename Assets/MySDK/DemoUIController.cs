@@ -128,7 +128,7 @@ namespace MyGamez.Demo
 		{
 			// Delegate JWT fetching to IOSLoginController, keep only initialization here
 			bool done = false;
-            string env = "prod";
+            string env = "dev";
             string appName = "magicwatersort";
 			string receivedToken = null;
 			iosLoginController.RequestJwtToken(env, appName, token => { receivedToken = token; done = true; });
@@ -138,9 +138,11 @@ namespace MyGamez.Demo
 				Debug.LogError("[iOS] Failed to obtain JWT token");
 				yield break;
 			}
-			string cpid = "porioffice"; // Replace with actual CPID
-			string backendUrl = env == "dev" ? "https://antiaddiction.dev.mygamez.cn/api/v1/usr" : "https://antiaddiction.myservicez.cn/api/v1/usr"; // Replace with actual backend URL
-			string authParams = "{\"jwt\":\"" + receivedToken + "\"}";
+			//string cpid = "mygamez";
+            string cpid = "mygamez_pw"; // Replace with actual CPID
+            string authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"073b657a-95ef-5d12-a149-644cd8523148\"}}"; // Replace with actual authParams
+			string backendUrl = env == "dev" ? "https://antiaddiction.dev.mygamez.cn/api/v1/usr" : "https://antiaddiction.myservicez.cn/api/v1/usr";
+			//string authParams = "{\"jwt\":\"" + receivedToken + "\"}";
             Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (token=" + receivedToken + ")");
 			Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (len=" + receivedToken.Length + ")");
 			MyGamezGameObject.DoInitialize(cpid, backendUrl, authParams, OnIOSSDKInitialized);
@@ -782,94 +784,6 @@ namespace MyGamez.Demo
             PlayerPrefs.SetInt("gold", totalGold);
             PlayerPrefs.Save();
         }
-
-        public void OnBuy50GoldButtonClicked()
-        {
-#if UNITY_ANDROID
-            // Android payment implementation
-            // This code demonstrates how to trigger payment in Android MySDK (iOS below).
-            // Step 1: Create IAPInfo
-            // IAPInfo is for player. It has basic information of this purchase (price, name and description).
-            // Payment providers usually show IAP Info to the player in their payment UI.
-            // NOTE: Price is in Fens (Chinese cents). 100 Fens = 1 Chinese Yuan. Use only numbers that are divisible by 10.
-            // NOTE: Use Chinese in Name and Description
-            int price = 100;
-            string name = "50 Gold";
-            string description = "50 shining gold pieces";
-            MySDK.Api.Billing.IAPInfo iapInfo = new MySDK.Api.Billing.IAPInfo(price, name, description);
-
-            // Step 2: Create PayInfo
-            // PayInfo is for the game itself. It is used to identify purchase in PayCallback.
-            // CustomID can be unique ID for this purchase for example
-            // ExtraInfo can be whatever extra info you wish to add to this purchase. Some tracking ID for example.
-            // NOTE: CustomID can be max. 128 characters long. ExtraInfo can be max. 65535 characters long.
-            string customID = "iap-50-gold-1234567890";
-            string extraInfo = "Some extra info about this purchase. Whatever data you need when payment is completed. Maybe some ID for logging for example. Can be pretty long.";
-            MySDK.Api.Billing.PayInfo payInfo = new MySDK.Api.Billing.PayInfo(iapInfo, customID, extraInfo);
-
-            // Step 3: Figure out which biller to use. ISBN version has only one biller.
-            // Step 4: Start the billing process with selected biller and payInfo.
-            // MySDK will take control.
-            // Registered PayCallback will be triggered when player finishes payment process.
-            // NOTE: MySDK will popup necessary biller dialogs on top of game UI.
-            List<MySDK.Api.Billing.Biller> billers = MySDK.Api.Billing.GetAvailableBillers();
-            MySDK.Api.Billing.DoBilling(billers[0], payInfo);
-#elif UNITY_IOS
-            // iOS payment implementation
-            float price = 1.0f; // Price in Chinese Yuan for iOS
-            MyGamezGameObject.DoRequestInappPurchase(price, OnIOSPurchaseResult);
-#endif
-        }
-
-        private void OnIOSPurchaseResult(MyGamezBridge.EventCode eventCode)
-        {
-            Debug.Log("iOS purchase result: " + eventCode);
-            
-            switch (eventCode)
-            {
-                case MyGamezBridge.EventCode.IapAllowed:
-                    Debug.Log("iOS MySDK: IAP allowed, processing purchase");
-                    // Here you would integrate with your actual iOS IAP system
-                    // After successful purchase, call:
-                    // MyGamezGameObject.DoAnnounceCompletedInappPurchase(price, OnIOSPurchaseAcknowledged);
-                    break;
-                case MyGamezBridge.EventCode.IapNotAllowedSinglePurchaseLimitExceeded:
-                    //ToastMessage.Show("Single purchase limit exceeded");
-                    Debug.Log("Single purchase limit exceeded");
-                    break;
-                case MyGamezBridge.EventCode.IapNotAllowedMonthlyPurchaseLimitExceeded:
-                    //ToastMessage.Show("Monthly purchase limit exceeded");
-                    Debug.Log("Monthly purchase limit exceeded");
-                    break;
-                case MyGamezBridge.EventCode.IapNotAllowedInGuestMode:
-                    //ToastMessage.Show("IAP not allowed in guest mode");
-                    Debug.Log("IAP not allowed in guest mode");
-                    break;
-                case MyGamezBridge.EventCode.IapNotAllowedAgeCriteriaNotMet:
-                    //ToastMessage.Show("IAP not allowed - age criteria not met");
-                    Debug.Log("IAP not allowed - age criteria not met");
-                    break;
-                default:
-                    Debug.Log("iOS MySDK: Unknown purchase result: " + eventCode);
-                    break;
-            }
-        }
-
-        private void OnIOSPurchaseAcknowledged(MyGamezBridge.EventCode eventCode)
-        {
-            Debug.Log("iOS purchase acknowledged: " + eventCode);
-            
-            if (eventCode == MyGamezBridge.EventCode.CompletedIapAcknowledged)
-            {
-                Debug.Log("iOS MySDK: Purchase successfully acknowledged");
-                // Add gold to player's account
-                OnGoldUpdated(50);
-            }
-        }
-
-
-
-
 
         public void OnValidateTextButtonClicked()
         {

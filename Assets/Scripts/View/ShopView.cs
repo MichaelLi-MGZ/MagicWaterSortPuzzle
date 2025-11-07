@@ -44,7 +44,9 @@ public class ShopView : BaseView
     public Transform coinIconInBoard;
 
     public SingleButtonDialogWindowController dialogWindow;
-    
+
+    public int price = 0;
+    private Config.IAPPackageID currentPurchasingPackageID = Config.IAPPackageID.GoldPack1;
 
     public override void InitView()
     {
@@ -56,11 +58,14 @@ public class ShopView : BaseView
         GetCurrentSelectID();
         SelectedItem();
         coinTxt.text = GameManager.instance.currentCoin.ToString();
+        IAPManager.Instance.SetServerBaseUrl(MyGamez.Demo.ServerConfig.BaseUrl);
+
     }
 
     public override void ShowView()
     {
         base.ShowView();
+        GameManager.instance.ShowAgeLimitedDialog(6);
     }
 
     public override void HideView()
@@ -513,6 +518,11 @@ public class ShopView : BaseView
             return;
         }
         
+#if UNITY_IOS
+        price = packageConfig.price;
+        currentPurchasingPackageID = packageID; // Store the package ID for later use
+        MyGamezGameObject.DoRequestInappPurchase(packageConfig.price, OnIOSPurchaseResult);
+#else
         // Step 1: Create IAPInfo (for player display)
         MyGamez.MySDK.Api.Billing.IAPInfo iapInfo = new MyGamez.MySDK.Api.Billing.IAPInfo(
             packageConfig.price, 
@@ -536,6 +546,7 @@ public class ShopView : BaseView
         {
             Debug.LogError("ShopView: No available billers found for MySDK billing");
         }
+#endif
     }
 
     public void AddBonusCoinCB()
@@ -580,28 +591,69 @@ public class ShopView : BaseView
         PurchaseGoldPack(Config.IAPPackageID.NoAds);
     }
 
-    public void BuyIAPPackage(Config.IAPPackageID packageID)
-    {
-        IAPManager.instance.BuyConsumable(packageID, (string iapID, IAPManager.IAP_CALLBACK_STATE state) =>
+    private void OnIOSPurchaseResult(MyGamezBridge.EventCode eventCode)
         {
-            if (state == IAPManager.IAP_CALLBACK_STATE.SUCCESS)
+            Debug.Log("iOS purchase result: " + eventCode);
+            
+            switch (eventCode)
             {
+                case MyGamezBridge.EventCode.IapAllowed:
+                    Debug.Log("iOS MySDK: IAP allowed, processing purchase");
+                    // Initiate actual Apple IAP purchase
+                    IAPManager.Instance.PurchaseProduct(currentPurchasingPackageID, OnIAPPurchaseComplete);
+                    break;
+                case MyGamezBridge.EventCode.IapNotAllowedSinglePurchaseLimitExceeded:
+                    //ToastMessage.Show("Single purchase limit exceeded");
+                    Debug.Log("IOS: Single purchase limit exceeded, price: " + price);
+                    GameManager.instance.ShowAgeLimitedDialog(7);
+                    Debug.Log("Single purchase limit exceeded");
+                    break;
+                case MyGamezBridge.EventCode.IapNotAllowedMonthlyPurchaseLimitExceeded:
+                    Debug.Log("IOS: Monthly purchase limit exceeded, price: " + price);
+                    GameManager.instance.ShowAgeLimitedDialog(8);
+                    //ToastMessage.Show("Monthly purchase limit exceeded");
+                    Debug.Log("Monthly purchase limit exceeded");
+                    break;
+                case MyGamezBridge.EventCode.IapNotAllowedInGuestMode:
+                    //ToastMessage.Show("IAP not allowed in guest mode");
+                    Debug.Log("IAP not allowed in guest mode");
+                    break;
+                case MyGamezBridge.EventCode.IapNotAllowedAgeCriteriaNotMet:
+                    //ToastMessage.Show("IAP not allowed - age criteria not met");
+                    Debug.Log("IAP not allowed - age criteria not met");
+                    break;
+                default:
+                    Debug.Log("iOS MySDK: Unknown purchase result: " + eventCode);
+                    break;
+            }
+        }
 
-                Debug.Log("SUCCESS " + iapID);
-                string name = Config.GetPackageConfig(packageID).name;
-                int coinAmount = Config.GetPackageConfig(packageID).coinAmount;
-                
-                Debug.Log("购买" + name + " " + coinAmount + "金币");
-                GameManager.instance.AddCoin(coinAmount);
-                
+        private void OnIAPPurchaseComplete(Config.IAPPackageID packageID, bool success, string errorMessage)
+        {
+            if (success)
+            {
+                Debug.Log($"[ShopView] Apple IAP purchase successful for package: {packageID}");
+                // Notify MySDK that purchase is completed
+                MyGamezGameObject.DoAnnounceCompletedInappPurchase(price, OnIOSPurchaseAcknowledged);
             }
             else
             {
-                Debug.Log("购买失败！");
-
+                Debug.LogError($"[ShopView] Apple IAP purchase failed for package: {packageID}, Error: {errorMessage}");
+                // Optionally show error dialog to user
             }
-        });
-    }
+        }
+
+        private void OnIOSPurchaseAcknowledged(MyGamezBridge.EventCode eventCode)
+        {
+            Debug.Log("iOS purchase acknowledged: " + eventCode);
+            
+            if (eventCode == MyGamezBridge.EventCode.CompletedIapAcknowledged)
+            {
+                Debug.Log("iOS MySDK: Purchase successfully acknowledged");
+                // Handle successful purchase - add coins or remove ads
+                HandleSuccessfulPurchase(currentPurchasingPackageID.ToString());
+            }
+        }
 
      public void WatchAds()
     {
@@ -653,77 +705,11 @@ public class ShopView : BaseView
 
         });
     }
-}
 
-#region Payment
-
-/// <summary>
-/// ShopView-specific payment callback for MySDK billing
-/// </summary>
-public class ShopViewPayCallback : Billing.IPayCallback
-{
-    private ShopView shopView;
-    
-    public ShopViewPayCallback(ShopView shop)
-    {
-        shopView = shop;
-    }
-    
-    public void OnBillingResult(MyGamez.MySDK.Api.Billing.BillingResult result)
-    {
-        Debug.Log($"ShopView Payment Result: {result.ResultCode}, Biller: {result.Biller}");
-        
-        if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.SUCCESS)
-        {
-            Debug.Log("ShopView: Payment was successful!");
-            Debug.Log($"Payment PayInfo.CustomID: {result.PayInfo.CustomID}");
-            Debug.Log($"Payment PayInfo.ExtraInfo: {result.PayInfo.ExtraInfo}");
-            Debug.Log($"Payment IapInfo.Name: {result.PayInfo.IapInfo.Name}");
-            Debug.Log($"Payment IapInfo.AmountFen: {result.PayInfo.IapInfo.AmountFen}");
-            
-
-            
-            // Print verification data for server validation
-            if (result.Verification != null)
-            {
-                Debug.Log("ShopView: Payment verification data available for server validation");
-                LocalVerificationHelper.PrintVerificationData(result.Verification);
-            }
-
-            // Extract package ID from custom ID
-            string packageID = ExtractPackageIDFromCustomID(result.PayInfo.CustomID);
-            Debug.Log($"ShopView: Extracted package ID: '{packageID}' from custom ID: '{result.PayInfo.CustomID}'");
-            
-            // Handle the successful purchase based on package ID
-            HandleSuccessfulPurchase(packageID, result);
-            
-            // Confirm to MySDK that player has received what they purchased
-            result.ConfirmGoodsGiven();
-        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.LIMITED){
-            Debug.Log("ShopView: Payment limited");
-             // Get Prompt data
-            GameManager.instance.ShowAgeLimitedDialog();
-        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.CANCELLED){
-            Debug.Log("ShopView: Payment cancelled");
-        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.FAILED){
-            Debug.Log("ShopView: Payment failed");
-        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.UNKNOWN){
-            Debug.Log("ShopView: Payment unknown");
-        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.EMPTY){
-            Debug.Log("ShopView: Payment empty");
-        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.INVALID){
-            Debug.Log("ShopView: Payment invalid");
-        }
-        else
-        {
-            Debug.Log($"ShopView: Payment failed - {result.ResultCode}: {result.ResultMsg}");
-        }
-    }
-    
     /// <summary>
     /// Extract package ID from custom ID format: "iap-{packageID}-{timestamp}"
     /// </summary>
-    private string ExtractPackageIDFromCustomID(string customID)
+    public string ExtractPackageIDFromCustomID(string customID)
     {
         if (string.IsNullOrEmpty(customID))
             return "unknown";
@@ -756,7 +742,7 @@ public class ShopViewPayCallback : Billing.IPayCallback
     /// <summary>
     /// Handle successful purchase by giving items to player
     /// </summary>
-    private void HandleSuccessfulPurchase(string packageID, MyGamez.MySDK.Api.Billing.BillingResult result)
+    public void HandleSuccessfulPurchase(string packageID)
     {
         Debug.Log($"ShopView: Processing successful purchase for package: {packageID}");
         
@@ -797,6 +783,74 @@ public class ShopViewPayCallback : Billing.IPayCallback
         else
         {
             Debug.LogWarning($"ShopView: Unknown package ID: {packageID}");
+        }
+    }
+}
+
+#region Payment
+
+
+
+/// <summary>
+/// ShopView-specific payment callback for MySDK billing
+/// </summary>
+public class ShopViewPayCallback : Billing.IPayCallback
+{
+    private ShopView shopView;
+    
+    public ShopViewPayCallback(ShopView shop)
+    {
+        shopView = shop;
+    }
+    
+    public void OnBillingResult(MyGamez.MySDK.Api.Billing.BillingResult result)
+    {
+        Debug.Log($"ShopView Payment Result: {result.ResultCode}, Biller: {result.Biller}");
+        
+        if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.SUCCESS)
+        {
+            Debug.Log("ShopView: Payment was successful!");
+            Debug.Log($"Payment PayInfo.CustomID: {result.PayInfo.CustomID}");
+            Debug.Log($"Payment PayInfo.ExtraInfo: {result.PayInfo.ExtraInfo}");
+            Debug.Log($"Payment IapInfo.Name: {result.PayInfo.IapInfo.Name}");
+            Debug.Log($"Payment IapInfo.AmountFen: {result.PayInfo.IapInfo.AmountFen}");
+            
+
+            
+            // Print verification data for server validation
+            if (result.Verification != null)
+            {
+                Debug.Log("ShopView: Payment verification data available for server validation");
+                LocalVerificationHelper.PrintVerificationData(result.Verification);
+            }
+
+            // Extract package ID from custom ID
+            string packageID = shopView.ExtractPackageIDFromCustomID(result.PayInfo.CustomID);
+            Debug.Log($"ShopView: Extracted package ID: '{packageID}' from custom ID: '{result.PayInfo.CustomID}'");
+            
+            // Handle the successful purchase based on package ID
+            shopView.HandleSuccessfulPurchase(packageID);
+            
+            // Confirm to MySDK that player has received what they purchased
+            result.ConfirmGoodsGiven();
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.LIMITED){
+            Debug.Log("ShopView: Payment limited");
+             // Get Prompt data
+            GameManager.instance.ShowAgeLimitedDialog(0);
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.CANCELLED){
+            Debug.Log("ShopView: Payment cancelled");
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.FAILED){
+            Debug.Log("ShopView: Payment failed");
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.UNKNOWN){
+            Debug.Log("ShopView: Payment unknown");
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.EMPTY){
+            Debug.Log("ShopView: Payment empty");
+        }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.INVALID){
+            Debug.Log("ShopView: Payment invalid");
+        }
+        else
+        {
+            Debug.Log($"ShopView: Payment failed - {result.ResultCode}: {result.ResultMsg}");
         }
     }
 }

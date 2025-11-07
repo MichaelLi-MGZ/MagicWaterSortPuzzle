@@ -3587,7 +3587,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "+9000\n388\u5143"
+  m_text: "+9000\n398\u5143"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
   m_sharedMaterial: {fileID: 8980274474525062747, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
@@ -9630,7 +9630,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "+3000\n188\u5143"
+  m_text: "+3000\n198\u5143"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
   m_sharedMaterial: {fileID: 8980274474525062747, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
@@ -14029,6 +14029,7 @@ MonoBehaviour:
   coinTxt: {fileID: 1101300576}
   coinIconInBoard: {fileID: 151069354}
   dialogWindow: {fileID: 183535543}
+  price: 0
 --- !u!1 &1082348381
 GameObject:
   m_ObjectHideFlags: 0
