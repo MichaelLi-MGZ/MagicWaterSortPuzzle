@@ -321,6 +321,9 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
     {
         string url = serverBaseUrl + "/api/apple/verify_receipt";
         
+        // Get session_token from PlayerPrefs if available
+        string sessionToken = PlayerPrefs.GetString("session_token", "");
+        
         // Prepare payload
         var payload = new Dictionary<string, object>
         {
@@ -329,6 +332,17 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
             {"package_id", packageID.ToString()},
             {"env", ServerConfig.iOSEnv}
         };
+        
+        // Add session_token if available (server will resolve player_id from it)
+        if (!string.IsNullOrEmpty(sessionToken))
+        {
+            payload["session_token"] = sessionToken;
+            Debug.Log($"[IAPManager] Including session_token in receipt verification request");
+        }
+        else
+        {
+            Debug.LogWarning("[IAPManager] No session_token found in PlayerPrefs, purchase record may not be saved with player_id");
+        }
 
         string json = Json.Serialize(payload);
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
