@@ -58,13 +58,22 @@ public class ShopView : BaseView
         GetCurrentSelectID();
         SelectedItem();
         coinTxt.text = GameManager.instance.currentCoin.ToString();
-        IAPManager.Instance.SetServerBaseUrl(MyGamez.Demo.ServerConfig.BaseUrl);
-
     }
-
+    
     public override void ShowView()
     {
         base.ShowView();
+        
+#if UNITY_IOS
+        // Initialize IAPManager when shop view is shown
+        if (!IAPManager.Instance.IsInitialized())
+        {
+            Debug.Log("[ShopView] Initializing IAPManager...");
+            IAPManager.InitializeEarly();
+            IAPManager.Instance.SetServerBaseUrl(MyGamez.Demo.ServerConfig.BaseUrl);
+        }
+#endif
+        
         GameManager.instance.ShowAgeLimitedDialog(6);
     }
 

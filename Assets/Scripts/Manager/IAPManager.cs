@@ -7,6 +7,7 @@ using UnityEngine.Networking;
 using System;
 using System.Text;
 using MiniJSON;
+using MyGamez.Demo;
 
 public class IAPManager : MonoBehaviour, IDetailedStoreListener
 {
@@ -28,19 +29,21 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
     private IStoreController storeController;
     private IExtensionProvider extensionProvider;
     private bool isInitialized = false;
-
-    // Mapping from package ID to Apple product ID
+    private bool initializationInProgress = false;
+    private InitializationFailureReason? lastInitFailure = null;
+    // Mapping from package ID to (product ID, product type)
     // IMPORTANT: Replace these with your actual product IDs from App Store Connect
     // Product IDs must match exactly what you configured in App Store Connect
-    private Dictionary<Config.IAPPackageID, string> productIdMap = new Dictionary<Config.IAPPackageID, string>
+    // Product types: NonConsumable for permanent items (like Remove Ads), Consumable for one-time purchases
+    private Dictionary<Config.IAPPackageID, (string id, ProductType type)> productMap = new Dictionary<Config.IAPPackageID, (string, ProductType)>
     {
-        { Config.IAPPackageID.NoAds, "com.mygamez.magicwatersort.removeads" },
-        { Config.IAPPackageID.GoldPack1, "com.mygamez.magicwatersort.goldpack1" },
-        { Config.IAPPackageID.GoldPack2, "com.mygamez.magicwatersort.goldpack2" },
-        { Config.IAPPackageID.GoldPack3, "com.mygamez.magicwatersort.goldpack3" },
-        { Config.IAPPackageID.GoldPack4, "com.mygamez.magicwatersort.goldpack4" },
-        { Config.IAPPackageID.GoldPack5, "com.mygamez.magicwatersort.goldpack5" },
-        { Config.IAPPackageID.GoldPack6, "com.mygamez.magicwatersort.goldpack6" },
+        { Config.IAPPackageID.NoAds, ("com.mygamez.magicwatersort.removeads", ProductType.NonConsumable) },
+        { Config.IAPPackageID.GoldPack1, ("com.mygamez.magicwatersort.goldpack1", ProductType.Consumable) },
+        { Config.IAPPackageID.GoldPack2, ("com.mygamez.magicwatersort.goldpack2", ProductType.Consumable) },
+        { Config.IAPPackageID.GoldPack3, ("com.mygamez.magicwatersort.goldpack3", ProductType.Consumable) },
+        { Config.IAPPackageID.GoldPack4, ("com.mygamez.magicwatersort.goldpack4", ProductType.Consumable) },
+        { Config.IAPPackageID.GoldPack5, ("com.mygamez.magicwatersort.goldpack5", ProductType.Consumable) },
+        { Config.IAPPackageID.GoldPack6, ("com.mygamez.magicwatersort.goldpack6", ProductType.Consumable) },
     };
 
     // Callback for purchase completion
@@ -55,7 +58,10 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
+            Debug.Log("[IAPManager] Awake");
+            Debug.Log("[IAPManager] Initializing purchasing...");
             InitializePurchasing();
+            Debug.Log("[IAPManager] Purchasing initialized");
         }
         else if (instance != this)
         {
@@ -70,17 +76,29 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
             Debug.Log("[IAPManager] Already initialized");
             return;
         }
+        
+        if (initializationInProgress)
+        {
+            Debug.Log("[IAPManager] Initialization already in progress");
+            return;
+        }
+
+        initializationInProgress = true;
+        lastInitFailure = null;
+        Debug.Log("[IAPManager] Starting store initialization...");
 
         var builder = ConfigurationBuilder.Instance(StandardPurchasingModule.Instance());
 
-        // Add all products to the builder
-        foreach (var kvp in productIdMap)
+        // Add all products to the builder with their correct types
+        foreach (var kvp in productMap)
         {
-            builder.AddProduct(kvp.Value, ProductType.Consumable);
-            Debug.Log($"[IAPManager] Added product: {kvp.Value} for package {kvp.Key}");
+            var (productId, productType) = kvp.Value;
+            builder.AddProduct(productId, productType);
+            Debug.Log($"[IAPManager] Added product: {productId} (type: {productType}) for package {kvp.Key}");
         }
 
         UnityPurchasing.Initialize(this, builder);
+        Debug.Log("[IAPManager] Store initialization completed");
     }
 
     public void OnInitialized(IStoreController controller, IExtensionProvider extensions)
@@ -89,42 +107,70 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
         storeController = controller;
         extensionProvider = extensions;
         isInitialized = true;
+        initializationInProgress = false;
+        lastInitFailure = null;
+        
+        // Log product availability
+        foreach (var kvp in productMap)
+        {
+            var (productId, _) = kvp.Value;
+            Product product = controller.products.WithID(productId);
+            if (product != null)
+            {
+                Debug.Log($"[IAPManager] Product {productId} available: {product.availableToPurchase}, price: {product.metadata.localizedPriceString}");
+            }
+        }
+        
+        // Notify any waiting purchase attempts
+        if (pendingPurchasePackageID.HasValue && pendingPurchaseCallback != null)
+        {
+            var packageID = pendingPurchasePackageID.Value;
+            var callback = pendingPurchaseCallback;
+            pendingPurchasePackageID = null;
+            pendingPurchaseCallback = null;
+            Debug.Log($"[IAPManager] Retrying purchase for {packageID} after initialization");
+            PurchaseProductInternal(packageID, callback);
+        }
     }
-
-    public void OnInitializeFailed(InitializationFailureReason error)
+    
+    // Pending purchase info for retry after initialization
+    private Config.IAPPackageID? pendingPurchasePackageID = null;
+    private Action<Config.IAPPackageID, bool, string> pendingPurchaseCallback = null;
+    
+    private IEnumerator WaitForInitializationAndPurchase(Config.IAPPackageID packageID, Action<Config.IAPPackageID, bool, string> onComplete)
     {
-        Debug.LogError($"[IAPManager] Initialization failed: {error}");
-        isInitialized = false;
-    }
-
-    public void OnInitializeFailed(InitializationFailureReason error, string message)
-    {
-        Debug.LogError($"[IAPManager] Initialization failed: {error}, {message}");
-        isInitialized = false;
-    }
-
-    /// <summary>
-    /// Initiate a purchase for the given package ID
-    /// </summary>
-    /// <param name="packageID">The package to purchase</param>
-    /// <param name="onComplete">Callback: (packageID, success, errorMessage)</param>
-    public void PurchaseProduct(Config.IAPPackageID packageID, Action<Config.IAPPackageID, bool, string> onComplete)
-    {
+        pendingPurchasePackageID = packageID;
+        pendingPurchaseCallback = onComplete;
+        
+        float timeout = 10f; // 10 seconds timeout
+        float elapsed = 0f;
+        
+        while (!isInitialized && elapsed < timeout)
+        {
+            yield return new WaitForSeconds(0.1f);
+            elapsed += 0.1f;
+        }
+        
         if (!isInitialized)
         {
-            Debug.LogError("[IAPManager] Store not initialized yet");
-            onComplete?.Invoke(packageID, false, "Store not initialized");
-            return;
+            Debug.LogError("[IAPManager] Initialization timeout, purchase failed");
+            pendingPurchasePackageID = null;
+            pendingPurchaseCallback = null;
+            onComplete?.Invoke(packageID, false, "Store initialization timeout");
         }
-
-        if (!productIdMap.ContainsKey(packageID))
+        // If initialization completed, OnInitialized will handle the retry
+    }
+    
+    private void PurchaseProductInternal(Config.IAPPackageID packageID, Action<Config.IAPPackageID, bool, string> onComplete)
+    {
+        if (!productMap.ContainsKey(packageID))
         {
             Debug.LogError($"[IAPManager] Product ID not found for package: {packageID}");
             onComplete?.Invoke(packageID, false, $"Product ID not found for package: {packageID}");
             return;
         }
 
-        string productId = productIdMap[packageID];
+        var (productId, productType) = productMap[packageID];
         Product product = storeController.products.WithID(productId);
 
         if (product == null || !product.availableToPurchase)
@@ -139,15 +185,81 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
         storeController.InitiatePurchase(product);
     }
 
+    public void OnInitializeFailed(InitializationFailureReason error)
+    {
+        Debug.LogError($"[IAPManager] Initialization failed: {error}");
+        isInitialized = false;
+        initializationInProgress = false;
+        lastInitFailure = error;
+        
+        // Notify any waiting purchase attempts
+        if (pendingPurchasePackageID.HasValue && pendingPurchaseCallback != null)
+        {
+            var packageID = pendingPurchasePackageID.Value;
+            var callback = pendingPurchaseCallback;
+            pendingPurchasePackageID = null;
+            pendingPurchaseCallback = null;
+            callback?.Invoke(packageID, false, $"Store initialization failed: {error}");
+        }
+    }
+
+    public void OnInitializeFailed(InitializationFailureReason error, string message)
+    {
+        Debug.LogError($"[IAPManager] Initialization failed: {error}, {message}");
+        isInitialized = false;
+        initializationInProgress = false;
+        lastInitFailure = error;
+        
+        // Notify any waiting purchase attempts
+        if (pendingPurchasePackageID.HasValue && pendingPurchaseCallback != null)
+        {
+            var packageID = pendingPurchasePackageID.Value;
+            var callback = pendingPurchaseCallback;
+            pendingPurchasePackageID = null;
+            pendingPurchaseCallback = null;
+            callback?.Invoke(packageID, false, $"Store initialization failed: {error} - {message}");
+        }
+    }
+
+    /// <summary>
+    /// Initiate a purchase for the given package ID
+    /// If not initialized yet, will wait and retry
+    /// </summary>
+    /// <param name="packageID">The package to purchase</param>
+    /// <param name="onComplete">Callback: (packageID, success, errorMessage)</param>
+    public void PurchaseProduct(Config.IAPPackageID packageID, Action<Config.IAPPackageID, bool, string> onComplete)
+    {
+        if (!isInitialized)
+        {
+            Debug.LogWarning("[IAPManager] Store not initialized yet, waiting for initialization...");
+            // Wait for initialization and retry
+            StartCoroutine(WaitForInitializationAndPurchase(packageID, onComplete));
+            return;
+        }
+
+        PurchaseProductInternal(packageID, onComplete);
+    }
+    
+    /// <summary>
+    /// Ensure IAPManager is initialized early
+    /// Call this from app startup to pre-initialize
+    /// </summary>
+    public static void InitializeEarly()
+    {
+        // Accessing Instance will trigger creation and initialization
+        var _ = Instance;
+        Debug.Log("[IAPManager] Early initialization triggered");
+    }
+
     public PurchaseProcessingResult ProcessPurchase(PurchaseEventArgs args)
     {
         Debug.Log($"[IAPManager] Purchase successful: {args.purchasedProduct.definition.id}");
 
         // Find the package ID from the product ID
         Config.IAPPackageID? packageID = null;
-        foreach (var kvp in productIdMap)
+        foreach (var kvp in productMap)
         {
-            if (kvp.Value == args.purchasedProduct.definition.id)
+            if (kvp.Value.id == args.purchasedProduct.definition.id)
             {
                 packageID = kvp.Key;
                 break;
@@ -214,7 +326,8 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
         {
             {"receipt_data", receiptData},
             {"product_id", productId},
-            {"package_id", packageID.ToString()}
+            {"package_id", packageID.ToString()},
+            {"env", ServerConfig.iOSEnv}
         };
 
         string json = Json.Serialize(payload);
@@ -301,9 +414,9 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
 
         // Find the package ID
         Config.IAPPackageID? packageID = null;
-        foreach (var kvp in productIdMap)
+        foreach (var kvp in productMap)
         {
-            if (kvp.Value == product.definition.id)
+            if (kvp.Value.id == product.definition.id)
             {
                 packageID = kvp.Key;
                 break;
@@ -323,9 +436,9 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
 
         // Find the package ID
         Config.IAPPackageID? packageID = null;
-        foreach (var kvp in productIdMap)
+        foreach (var kvp in productMap)
         {
-            if (kvp.Value == product.definition.id)
+            if (kvp.Value.id == product.definition.id)
             {
                 packageID = kvp.Key;
                 break;
@@ -343,7 +456,78 @@ public class IAPManager : MonoBehaviour, IDetailedStoreListener
     /// </summary>
     public string GetProductId(Config.IAPPackageID packageID)
     {
-        return productIdMap.ContainsKey(packageID) ? productIdMap[packageID] : null;
+        return productMap.ContainsKey(packageID) ? productMap[packageID].id : null;
+    }
+    
+    /// <summary>
+    /// Get the product type for a package
+    /// </summary>
+    public ProductType? GetProductType(Config.IAPPackageID packageID)
+    {
+        return productMap.ContainsKey(packageID) ? productMap[packageID].type : (ProductType?)null;
+    }
+    
+    /// <summary>
+    /// Check if a non-consumable product has been purchased
+    /// </summary>
+    public bool IsProductOwned(Config.IAPPackageID packageID)
+    {
+        if (!isInitialized || storeController == null)
+            return false;
+            
+        if (!productMap.ContainsKey(packageID))
+            return false;
+            
+        var (productId, productType) = productMap[packageID];
+        if (productType != ProductType.NonConsumable)
+            return false; // Only non-consumables can be "owned"
+            
+        Product product = storeController.products.WithID(productId);
+        return product != null && product.hasReceipt;
+    }
+    
+    /// <summary>
+    /// Get localized price string for a product
+    /// </summary>
+    public string GetLocalizedPrice(Config.IAPPackageID packageID)
+    {
+        if (!isInitialized || storeController == null)
+            return null;
+            
+        if (!productMap.ContainsKey(packageID))
+            return null;
+            
+        var (productId, _) = productMap[packageID];
+        Product product = storeController.products.WithID(productId);
+        return product?.metadata?.localizedPriceString;
+    }
+    
+    /// <summary>
+    /// Get initialization status
+    /// </summary>
+    public bool IsInitialized()
+    {
+        return isInitialized;
+    }
+    
+    /// <summary>
+    /// Get last initialization failure reason (if any)
+    /// </summary>
+    public InitializationFailureReason? GetLastInitFailure()
+    {
+        return lastInitFailure;
+    }
+    
+    /// <summary>
+    /// Retry initialization if it previously failed
+    /// </summary>
+    public void RetryInitialization()
+    {
+        if (!isInitialized && !initializationInProgress)
+        {
+            Debug.Log("[IAPManager] Retrying initialization...");
+            InitializePurchasing();
+        }
     }
 
     /// <summary>

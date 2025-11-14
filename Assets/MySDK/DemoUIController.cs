@@ -128,10 +128,10 @@ namespace MyGamez.Demo
 		{
 			// Delegate JWT fetching to IOSLoginController, keep only initialization here
 			bool done = false;
-            string env = "dev";
             string appName = "magicwatersort";
+            string env = ServerConfig.MygamezEnv;
 			string receivedToken = null;
-			iosLoginController.RequestJwtToken(env, appName, token => { receivedToken = token; done = true; });
+			iosLoginController.RequestJwtToken(ServerConfig.MygamezEnv, appName, token => { receivedToken = token; done = true; });
 			while (!done) yield return null;
 			if (string.IsNullOrEmpty(receivedToken))
 			{
@@ -141,7 +141,7 @@ namespace MyGamez.Demo
 			//string cpid = "mygamez";
             string cpid = "mygamez_pw"; // Replace with actual CPID
             string authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"073b657a-95ef-5d12-a149-644cd8523148\"}}"; // Replace with actual authParams
-			string backendUrl = env == "dev" ? "https://antiaddiction.dev.mygamez.cn/api/v1/usr" : "https://antiaddiction.myservicez.cn/api/v1/usr";
+			string backendUrl =  ServerConfig.MygamezEnv == "dev" ? "https://antiaddiction.dev.mygamez.cn/api/v1/usr" : "https://antiaddiction.myservicez.cn/api/v1/usr";
 			//string authParams = "{\"jwt\":\"" + receivedToken + "\"}";
             Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (token=" + receivedToken + ")");
 			Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (len=" + receivedToken.Length + ")");
