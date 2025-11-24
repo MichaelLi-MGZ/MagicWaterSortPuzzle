@@ -140,7 +140,7 @@ namespace MyGamez.Demo
 			}
 			//string cpid = "mygamez";
             string cpid = "mygamez_pw"; // Replace with actual CPID
-            string authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"073b657a-95ef-5d12-a149-644cd8523148\"}}"; // Replace with actual authParams
+            string authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"073b657a-95ef-5d11-a139-644cd85\"}}"; // Replace with actual authParams
 			string backendUrl =  ServerConfig.MygamezEnv == "dev" ? "https://antiaddiction.dev.mygamez.cn/api/v1/usr" : "https://antiaddiction.myservicez.cn/api/v1/usr";
 			//string authParams = "{\"jwt\":\"" + receivedToken + "\"}";
             Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (token=" + receivedToken + ")");
@@ -152,6 +152,7 @@ namespace MyGamez.Demo
         private void OnIOSSDKInitialized(MyGamezBridge.EventCode eventCode)
         {
             Debug.Log("iOS MySDK initialization result: " + eventCode);
+            Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
             
             switch (eventCode)
             {
@@ -162,6 +163,11 @@ namespace MyGamez.Demo
                 case MyGamezBridge.EventCode.RidCheckRequired:
                     Debug.Log("iOS MySDK: RID check required");
                     ShowRIDCheckDialog();
+                    break;
+                case MyGamezBridge.EventCode.PlayingNotAllowedDueToTimeOfDayConstraints:
+                    Debug.Log("iOS MySDK: Player not allowed to play due to time of day constraints");
+                    Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
+                    ShowTimeOutDialog();
                     break;
                 case MyGamezBridge.EventCode.GuestModeNotGranted:
                     Debug.Log("iOS MySDK: Guest mode not granted");
@@ -191,7 +197,14 @@ namespace MyGamez.Demo
             {
                 case MyGamezBridge.EventCode.GameStartAllowed:
                     Debug.Log("iOS MySDK: Game start allowed");
-                    StartGame();
+                    if (!MyGamezGameObject.IsAdult())
+                    {
+                        Debug.Log("Player is not adult, show underage play time limit warning dialog");
+                        MyGamezGameObject.DoRequestPromptCallback(3, ShowUnderagePlayTimeLimitWarningDialogCallback);
+                    }else{
+                        Debug.Log("Player is adult, start game");
+                        StartGame();
+                    }
                     break;
                 case MyGamezBridge.EventCode.GuestModeGameTimeDepleted:
                 case MyGamezBridge.EventCode.DailyGameTimeDepleted:
@@ -209,6 +222,31 @@ namespace MyGamez.Demo
                 default:
                     Debug.Log("iOS MySDK: Unknown game start event: " + eventCode);
                     break;
+            }
+        }
+
+
+        private void ShowUnderagePlayTimeLimitWarningDialogCallback(string title, string body, string button)
+        {
+            if (singleButtonDialogWindow != null)
+            {
+                Debug.Log("ShowUnderagePlayTimeLimitWarningDialogCallback, Title: " + title);
+                Debug.Log("ShowUnderagePlayTimeLimitWarningDialogCallback, Body: " + body);
+                Debug.Log("ShowUnderagePlayTimeLimitWarningDialogCallbackg, Button: " + button);
+                singleButtonDialogWindow.setTitleText(title);
+                singleButtonDialogWindow.setMessageText(body);
+                singleButtonDialogWindow.setLeftText(button);
+                singleButtonDialogWindow.setLeftCallback(
+                    delegate
+                    {
+                        singleButtonDialogWindow.hide();
+                        StartGame();
+                    });
+                singleButtonDialogWindow.show();
+            }
+            else
+            {
+                Debug.LogError("DialogWindowController not assigned in GameManager!");
             }
         }
 
@@ -569,6 +607,11 @@ namespace MyGamez.Demo
         private void ShowTimeOutDialog()
         {
             // Get Prompt data
+
+#if UNITY_IOS
+            Debug.Log("IOS: Show Time Out Dialog");
+            MyGamezGameObject.DoRequestPromptCallback(5, ShowPromptDialogCallback);
+#else
             MySDK.Api.AntiAddiction.PromptDialogData data = MySDK.Api.AntiAddiction.GetTimeOfDayConstraintPromptDialogData();
 
             // Show dialog to the player.
@@ -582,6 +625,31 @@ namespace MyGamez.Demo
                     MySDK.Api.App.QuitApp();
                 });
             singleButtonDialogWindow.show();
+#endif
+        }
+
+        private void ShowPromptDialogCallback(string title, string body, string button)
+        {
+            if (singleButtonDialogWindow != null)
+            {
+                Debug.Log("Show PromptDialog, Title: " + title);
+                Debug.Log("Show PromptDialog, Body: " + body);
+                Debug.Log("Show PromptDialog, Button: " + button);
+                singleButtonDialogWindow.setTitleText(title);
+                singleButtonDialogWindow.setMessageText(body);
+                singleButtonDialogWindow.setLeftText(button);
+                singleButtonDialogWindow.setLeftCallback(
+                    delegate
+                    {
+                        singleButtonDialogWindow.hide();
+                        Application.Quit();
+                    });
+                singleButtonDialogWindow.show();
+            }
+            else
+            {
+                Debug.LogError("DialogWindowController not assigned in GameManager!");
+            }
         }
 
         private void ShowRIDCheckDialog()
@@ -606,6 +674,7 @@ namespace MyGamez.Demo
             {
                 case MyGamezBridge.EventCode.UserRightsDetermined:
                     Debug.Log("iOS MySDK: RID check successful, user rights determined");
+                     Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
                     RequestIOSGameStart();
                     break;
                 case MyGamezBridge.EventCode.RidCheckRequired:
@@ -615,6 +684,7 @@ namespace MyGamez.Demo
                 case MyGamezBridge.EventCode.DailyGameTimeDepleted:
                 case MyGamezBridge.EventCode.PlayingNotAllowedDueToTimeOfDayConstraints:
                     Debug.Log("iOS MySDK: Playing not allowed due to time constraints");
+                    Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
                     ShowTimeOutDialog();
                     break;
                 case MyGamezBridge.EventCode.GeneralError:
