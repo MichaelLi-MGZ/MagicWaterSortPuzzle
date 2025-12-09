@@ -324,7 +324,7 @@ public class ShopView : BaseView
 
     public void UnlockItem()
     {
-        if (GameManager.instance.currentCoin < 400)
+        if (GameManager.instance.currentCoin < 1500)
         {
             GameManager.instance.uiManager.warningView.ShowView("金币不足");
             return;
@@ -353,7 +353,7 @@ public class ShopView : BaseView
             {
                 int randomUnlockIndex = lockItemIndex[Random.Range(0, lockItemIndex.Count)];
                 PlayerPrefs.SetInt("Bottle" + randomUnlockIndex, 1);
-                GameManager.instance.SubCoin(400);
+                GameManager.instance.SubCoin(1500);
             }
 
             LoadBottleShopList();
@@ -375,7 +375,7 @@ public class ShopView : BaseView
             {
                 int randomUnlockIndex = lockItemIndex[Random.Range(0, lockItemIndex.Count)];
                 PlayerPrefs.SetInt("Wall" + randomUnlockIndex, 1);
-                GameManager.instance.SubCoin(400);
+                GameManager.instance.SubCoin(1500);
             }
 
             LoadWallShopList();
@@ -398,7 +398,7 @@ public class ShopView : BaseView
             {
                 int randomUnlockIndex = lockItemIndex[Random.Range(0, lockItemIndex.Count)];
                 PlayerPrefs.SetInt("Palette" + randomUnlockIndex, 1);
-                GameManager.instance.SubCoin(400);
+                GameManager.instance.SubCoin(1500);
             }
 
             LoadPalettesShopList();

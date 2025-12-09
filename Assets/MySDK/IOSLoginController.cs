@@ -189,7 +189,7 @@ namespace MyGamez.Demo
 			});
 		}
 
-		private void ShowAppleSignInDialog()
+		public void ShowAppleSignInDialog()
 		{
 			if (appleAuthManager == null)
 			{

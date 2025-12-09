@@ -65,9 +65,12 @@ public class NotificationBackground : MonoBehaviour
             progressBarFill.fillAmount = 0f;
             
             // Animate progress bar from 0 to 100% over the specified duration
+            Debug.Log($"[NotificationBackground] Starting DOFillAmount animation: 0 -> 1 over {progressDuration} seconds");
             progressBarFill.DOFillAmount(1f, progressDuration)
                 .SetEase(Ease.Linear)
                 .OnComplete(() => {
+                    Debug.Log("[NotificationBackground] Progress bar animation completed (100%), invoking onProgressComplete callback");
+                    Debug.Log($"[NotificationBackground] Final fill amount: {progressBarFill.fillAmount}");
                     onProgressComplete?.Invoke();
                 });
         }
@@ -85,17 +88,34 @@ public class NotificationBackground : MonoBehaviour
     /// </summary>
     public void Show()
     {
+        Debug.Log("[NotificationBackground] Show() called");
+        Debug.Log($"[NotificationBackground] Current active state before Show(): {gameObject.activeSelf}");
+        
         gameObject.SetActive(true);
+        
+        Debug.Log($"[NotificationBackground] GameObject activated: {gameObject.activeSelf}");
         
         if (backgroundImage != null)
         {
             backgroundImage.gameObject.SetActive(true);
+            Debug.Log($"[NotificationBackground] Background image activated: {backgroundImage.gameObject.activeSelf}");
+        }
+        else
+        {
+            Debug.LogWarning("[NotificationBackground] Background image is null");
         }
         
         if (progressBarFill != null)
         {
             progressBarFill.gameObject.SetActive(true);
+            Debug.Log($"[NotificationBackground] Progress bar fill activated: {progressBarFill.gameObject.activeSelf}, current fill: {progressBarFill.fillAmount}");
         }
+        else
+        {
+            Debug.LogWarning("[NotificationBackground] Progress bar fill is null");
+        }
+        
+        Debug.Log($"[NotificationBackground] IsVisible() after Show(): {IsVisible()}");
     }
     
     /// <summary>
@@ -103,19 +123,28 @@ public class NotificationBackground : MonoBehaviour
     /// </summary>
     public void Hide()
     {
+        Debug.Log("[NotificationBackground] Hide() called");
+        Debug.Log($"[NotificationBackground] Current active state before Hide(): {gameObject.activeSelf}");
+        
         gameObject.SetActive(false);
+        
+        Debug.Log($"[NotificationBackground] GameObject deactivated: {gameObject.activeSelf}");
         
         // Also ensure background image is hidden
         if (backgroundImage != null)
         {
             backgroundImage.gameObject.SetActive(false);
+            Debug.Log("[NotificationBackground] Background image deactivated");
         }
         
         // Hide progress bar as well
         if (progressBarFill != null)
         {
             progressBarFill.gameObject.SetActive(false);
+            Debug.Log($"[NotificationBackground] Progress bar fill deactivated, final fill amount: {progressBarFill.fillAmount}");
         }
+        
+        Debug.Log($"[NotificationBackground] IsVisible() after Hide(): {IsVisible()}");
     }
     
     /// <summary>

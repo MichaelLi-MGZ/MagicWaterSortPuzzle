@@ -20,6 +20,7 @@ namespace MyGamez.Demo
         public GameObject toastMessage;
         public NotificationBackground notificationBackground;
         public AgeAppropriateWindowController ageAppropriateWindowController; // Reference to window controller
+        public GameObject appleSignInButton; // Apple Sign-In button (hidden by default)
 
         private bool playing = false;
         private MySDK.Api.Login.ILoginStateListener loginStateListener;
@@ -79,6 +80,9 @@ namespace MyGamez.Demo
 #if UNITY_IOS
             iosLoginController = new IOSLoginController(this, MyGamez.Demo.ServerConfig.BaseUrl, InitializeIOSMySDKWithAppleAuth);
             Debug.Log("[DemoUIController][iOS] IOSLoginController created with baseUrl=" + MyGamez.Demo.ServerConfig.BaseUrl);
+            
+            // Initialize Apple Sign-In button visibility
+            CheckSessionTokenAndUpdateButton();
 #endif
 
             Debug.Log("[Startup] HasAcceptedPrivacyPolicy=" + HasAcceptedPrivacyPolicy());
@@ -107,8 +111,21 @@ namespace MyGamez.Demo
         {
 #if UNITY_IOS
                 Debug.Log("[Startup] Initializing iOS SDK...");
-                Debug.Log("[Startup] Triggering iOS login flow via IOSLoginController.BeginLoginFlow()");
-                iosLoginController.BeginLoginFlow();
+                // Check sessionToken before proceeding
+                string sessionToken = PlayerPrefs.GetString("session_token", string.Empty);
+                if (string.IsNullOrEmpty(sessionToken))
+                {
+                    Debug.Log("[Startup] No session token found, showing Apple Sign-In button");
+                    // Button visibility is already set in CheckSessionTokenAndUpdateButton()
+                    // Don't proceed with login flow yet - wait for user to click the button
+                    return;
+                }
+                else
+                {
+                    Debug.Log("[Startup] Session token found, proceeding with login flow");
+                    Debug.Log("[Startup] Triggering iOS login flow via IOSLoginController.BeginLoginFlow()");
+                    iosLoginController.BeginLoginFlow();
+                }
 #else
                 Debug.Log("[Startup] Initializing Android/Editor SDK...");
                 MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
@@ -140,7 +157,7 @@ namespace MyGamez.Demo
 			}
 			//string cpid = "mygamez";
             string cpid = "mygamez_pw"; // Replace with actual CPID
-            string authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"073b657a-95ef-5d11-a139-644cd85\"}}"; // Replace with actual authParams
+            string authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"073b657a-96ef-5d11-a139-644cd85\"}}"; // Replace with actual authParams
 			string backendUrl =  ServerConfig.MygamezEnv == "dev" ? "https://antiaddiction.dev.mygamez.cn/api/v1/usr" : "https://antiaddiction.myservicez.cn/api/v1/usr";
 			//string authParams = "{\"jwt\":\"" + receivedToken + "\"}";
             Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (token=" + receivedToken + ")");
@@ -152,7 +169,6 @@ namespace MyGamez.Demo
         private void OnIOSSDKInitialized(MyGamezBridge.EventCode eventCode)
         {
             Debug.Log("iOS MySDK initialization result: " + eventCode);
-            Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
             
             switch (eventCode)
             {
@@ -164,10 +180,12 @@ namespace MyGamez.Demo
                     Debug.Log("iOS MySDK: RID check required");
                     ShowRIDCheckDialog();
                     break;
-                case MyGamezBridge.EventCode.PlayingNotAllowedDueToTimeOfDayConstraints:
-                    Debug.Log("iOS MySDK: Player not allowed to play due to time of day constraints");
-                    Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
+                case MyGamezBridge.EventCode.DailyGameTimeDepleted:
+                    Debug.Log("iOS MySDK: Daily game time depleted");
                     ShowTimeOutDialog();
+                    break;
+                case MyGamezBridge.EventCode.PlayingNotAllowedDueToTimeOfDayConstraints:
+                    Debug.Log("iOS MySDK: Player not allowed to play due to time of day constraints");               ShowTimeOutDialog();
                     break;
                 case MyGamezBridge.EventCode.GuestModeNotGranted:
                     Debug.Log("iOS MySDK: Guest mode not granted");
@@ -203,7 +221,7 @@ namespace MyGamez.Demo
                         MyGamezGameObject.DoRequestPromptCallback(3, ShowUnderagePlayTimeLimitWarningDialogCallback);
                     }else{
                         Debug.Log("Player is adult, start game");
-                        StartGame();
+                        ShowProgressAndLogin();
                     }
                     break;
                 case MyGamezBridge.EventCode.GuestModeGameTimeDepleted:
@@ -240,7 +258,7 @@ namespace MyGamez.Demo
                     delegate
                     {
                         singleButtonDialogWindow.hide();
-                        StartGame();
+                        ShowProgressAndLogin();
                     });
                 singleButtonDialogWindow.show();
             }
@@ -272,6 +290,8 @@ namespace MyGamez.Demo
  #if UNITY_IOS
                         PlayerPrefs.SetInt("IsPpAccepted", 1); // 1 for accepted, 0 for not accepted
                         PlayerPrefs.Save();
+                        // Update button visibility after privacy policy is accepted
+                        CheckSessionTokenAndUpdateButton();
 #else
                         MySDK.Api.Features.PrivacyPolicy.SetPpAccepted();
 #endif
@@ -322,6 +342,7 @@ namespace MyGamez.Demo
                 case ResultCode.SUCCESS:
                 case ResultCode.ALREADY_DONE:
                     // Initialisation is completed. Show progress bar before login.
+                    Debug.Log($"[DemoUIController] MySDK Init {result.ResultCode}, triggering ShowProgressAndLogin()");
                     ShowProgressAndLogin();
                     break;
                 case ResultCode.PP_AND_TOS_NOT_ACCEPTED:
@@ -363,9 +384,12 @@ namespace MyGamez.Demo
             // Check for state changes
             if (currentWindowVisible != previousWindowVisible)
             {
+                Debug.Log($"[DemoUIController] Window visibility changed: {previousWindowVisible} -> {currentWindowVisible}, loginPending: {loginPending}");
+                
                 // If window became hidden and login is pending, proceed with login
                 if (!currentWindowVisible && previousWindowVisible && loginPending)
                 {
+                    Debug.Log("[DemoUIController] Window became hidden and login is pending, proceeding with login");
                     loginPending = false;
                     Login();
                 }
@@ -379,18 +403,28 @@ namespace MyGamez.Demo
         /// </summary>
         private void ShowProgressAndLogin()
         {
+            Debug.Log("[DemoUIController] ShowProgressAndLogin() called");
+            
             if (notificationBackground != null)
             {
+                Debug.Log("[DemoUIController] NotificationBackground found, showing progress bar");
+                Debug.Log($"[DemoUIController] NotificationBackground.IsVisible() before Show(): {notificationBackground.IsVisible()}");
+                
                 // Show the notification background with progress bar
                 notificationBackground.Show();
                 
+                Debug.Log($"[DemoUIController] NotificationBackground.IsVisible() after Show(): {notificationBackground.IsVisible()}");
+                Debug.Log("[DemoUIController] Starting progress bar animation (8 seconds)");
+                
                 // Start the 8-second progress bar, then check window visibility before login
                 notificationBackground.StartProgress(() => {
+                    Debug.Log("[DemoUIController] Progress bar animation completed, checking window visibility before login");
                     CheckWindowVisibilityAndLogin();
                 });
             }
             else
             {
+                Debug.LogWarning("[DemoUIController] NotificationBackground is null, skipping progress bar and proceeding directly to login check");
                 CheckWindowVisibilityAndLogin();
             }
         }
@@ -438,24 +472,30 @@ namespace MyGamez.Demo
         /// </summary>
         private void CheckWindowVisibilityAndLogin()
         {
+            Debug.Log("[DemoUIController] CheckWindowVisibilityAndLogin() called");
+            
             AgeAppropriateWindowController controller = GetAgeAppropriateWindowController();
             
             if (controller == null)
             {
+                Debug.Log("[DemoUIController] No AgeAppropriateWindowController found, proceeding with login immediately");
                 Login();
                 return;
             }
             
             bool isWindowVisible = controller.IsWindowVisible();
+            Debug.Log($"[DemoUIController] AgeAppropriateWindowController found, window visible: {isWindowVisible}");
             
             if (!isWindowVisible)
             {
                 // Window is not visible, proceed with login immediately
+                Debug.Log("[DemoUIController] Window is not visible, proceeding with login immediately");
                 Login();
             }
             else
             {
                 // Window is visible, wait for it to become hidden
+                Debug.Log("[DemoUIController] Window is visible, setting loginPending=true and waiting for window to be hidden");
                 loginPending = true;
                 previousWindowVisible = true; // Set initial state
             }
@@ -480,6 +520,9 @@ namespace MyGamez.Demo
 
         private void Login()
         {   
+#if UNITY_IOS
+            StartGame();
+#else
             if (loginStateListener == null)
             {
                 // Set LoginStateListener
@@ -492,6 +535,7 @@ namespace MyGamez.Demo
 
             // ISBN version always has only one vendor
             MySDK.Api.Login.DoLogin(vendors[0]);
+#endif
         }
 
         /// <summary>
@@ -674,7 +718,7 @@ namespace MyGamez.Demo
             {
                 case MyGamezBridge.EventCode.UserRightsDetermined:
                     Debug.Log("iOS MySDK: RID check successful, user rights determined");
-                     Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
+                    Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
                     RequestIOSGameStart();
                     break;
                 case MyGamezBridge.EventCode.RidCheckRequired:
@@ -949,5 +993,53 @@ namespace MyGamez.Demo
                 Debug.Log("Remaining playtime in ms is " + playtime);
 #endif
         }
+
+#if UNITY_IOS
+        /// <summary>
+        /// Check sessionToken and update Apple Sign-In button visibility
+        /// </summary>
+        private void CheckSessionTokenAndUpdateButton()
+        {
+            if (appleSignInButton == null)
+            {
+                Debug.LogWarning("[DemoUIController] Apple Sign-In button is not assigned");
+                return;
+            }
+
+            string sessionToken = PlayerPrefs.GetString("session_token", string.Empty);
+            if (string.IsNullOrEmpty(sessionToken))
+            {
+                Debug.Log("[DemoUIController] Session token is empty, showing Apple Sign-In button");
+                appleSignInButton.SetActive(true);
+            }
+            else
+            {
+                Debug.Log("[DemoUIController] Session token exists, hiding Apple Sign-In button");
+                appleSignInButton.SetActive(true);
+            }
+        }
+
+        /// <summary>
+        /// Called when Apple Sign-In button is clicked
+        /// </summary>
+        public void OnAppleSignInButtonClicked()
+        {
+            Debug.Log("[DemoUIController] Apple Sign-In button clicked");
+            // Hide the button when clicked to prevent multiple clicks
+            if (appleSignInButton != null)
+            {
+                appleSignInButton.SetActive(false);
+            }
+            
+            if (iosLoginController != null)
+            {
+                iosLoginController.ShowAppleSignInDialog();
+            }
+            else
+            {
+                Debug.LogError("[DemoUIController] IOSLoginController is null, cannot show Apple Sign-In dialog");
+            }
+        }
+#endif
     }
 }
