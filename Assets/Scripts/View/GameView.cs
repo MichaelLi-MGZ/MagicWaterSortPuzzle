@@ -138,7 +138,8 @@ public class GameView : BaseView
         {
             remainUndoTxt.gameObject.SetActive(false);
             undoDes.SetActive(true);
-            undoRWIcon.SetActive(true);
+            //TODO: Implement with ads in future disbale undoRWIcon
+            undoRWIcon.SetActive(false);
         }
     }
 

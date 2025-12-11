@@ -12,6 +12,8 @@ public class ProfileView : BaseView
 
     public TextMeshProUGUI coinTxt;
 
+    public TextMeshProUGUI playerIdTxt;
+
     public List<AchievementData> achieDataList;
 
     public List<AchievementItem> achievementItemList = new List<AchievementItem>();
@@ -45,6 +47,7 @@ public class ProfileView : BaseView
         }
 
         coinTxt.text = GameManager.instance.currentCoin.ToString();
+        playerIdTxt.text = GameManager.instance.getPlayerId();
         GetAchieData();
         InitAchievement();
     }

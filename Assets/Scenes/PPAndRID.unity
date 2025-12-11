@@ -8329,6 +8329,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d516c2adc8de744c5b14a925e6c1a102, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  appleSignInButton: {fileID: 195213273}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

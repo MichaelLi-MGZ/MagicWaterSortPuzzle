@@ -65,6 +65,129 @@ namespace MyGamez.Demo
 		}
 
 		/// <summary>
+		/// Remove all user-status related PlayerPrefs keys that this helper manages.
+		/// Also clears user status on the server side.
+		/// </summary>
+		public static void ClearUserStatus()
+		{
+			ClearUserStatus(null);
+		}
+
+		/// <summary>
+		/// Remove all user-status related PlayerPrefs keys that this helper manages.
+		/// Also clears user status on the server side if host MonoBehaviour is provided.
+		/// </summary>
+		public static void ClearUserStatus(MonoBehaviour host)
+		{
+			// Clear local PlayerPrefs
+			var keys = configuredUserStatusIntKeys ?? DefaultUserStatusIntKeys;
+			for (int i = 0; i < keys.Length; i++)
+			{
+				string statusKey = keys[i];
+				string prefKey = (userStatusToPlayerPrefKeyMap != null && userStatusToPlayerPrefKeyMap.ContainsKey(statusKey))
+					? userStatusToPlayerPrefKeyMap[statusKey]
+					: statusKey;
+				PlayerPrefs.DeleteKey(prefKey);
+			}
+			PlayerPrefs.Save();
+
+			// Clear server-side user status if host is provided
+			if (host != null)
+			{
+				//TODO remove this after testing
+				//ClearUserStatusOnServer(host);
+			}
+		}
+
+		/// <summary>
+		/// Clear user status on server using configured ServerConfig.BaseUrl.
+		/// </summary>
+		public static void ClearUserStatusOnServer(MonoBehaviour host)
+		{
+			ClearUserStatusOnServer(host, ServerConfig.BaseUrl);
+		}
+
+		/// <summary>
+		/// Clear user status on server using specified server URL.
+		/// </summary>
+		public static void ClearUserStatusOnServer(MonoBehaviour host, string serverBaseUrl)
+		{
+			if (host == null)
+			{
+				Debug.LogError("[UserStatusSync] ClearUserStatusOnServer requires a host MonoBehaviour to run coroutine");
+				return;
+			}
+			host.StartCoroutine(ClearUserStatusOnServerCoroutine(serverBaseUrl));
+		}
+
+		private static IEnumerator ClearUserStatusOnServerCoroutine(string serverBaseUrl)
+		{
+			string sessionToken = PlayerPrefs.GetString("session_token", string.Empty);
+			if (string.IsNullOrEmpty(sessionToken))
+			{
+				Debug.LogWarning("[UserStatusSync] ClearUserStatusOnServer skipped: no session_token");
+				yield break;
+			}
+
+			// Use save_user_status endpoint with empty user_status dict to clear the payload
+			var userStatus = new Dictionary<string, int>(); // Empty dictionary
+			var body = new Dictionary<string, object>
+			{
+				{"session_token", sessionToken},
+				{"user_status", userStatus}
+			};
+			string json = MiniJSON.Json.Serialize(body);
+			var url = serverBaseUrl.TrimEnd('/') + "/api/user_status/save";
+			Debug.Log("[UserStatusSync] ClearUserStatusOnServer POST: url=" + url);
+			yield return PostJson(url, json, (ok, resp) =>
+			{
+				if (ok)
+				{
+					Debug.Log("[UserStatusSync] ClearUserStatusOnServer response: success");
+				}
+				else
+				{
+					Debug.LogWarning("[UserStatusSync] ClearUserStatusOnServer response: failed, resp=" + (resp ?? "null"));
+				}
+			});
+		}
+
+		/// <summary>
+		/// Print all current PlayerPrefs values that are tracked by this helper.
+		/// Also includes common string keys like session_token.
+		/// </summary>
+		public static void PrintAllPlayerPrefs()
+		{
+			Debug.Log("=== [UserStatusSync] All PlayerPrefs Values ===");
+			
+			// Print all tracked int keys
+			var keys = configuredUserStatusIntKeys ?? DefaultUserStatusIntKeys;
+			for (int i = 0; i < keys.Length; i++)
+			{
+				string statusKey = keys[i];
+				string prefKey = (userStatusToPlayerPrefKeyMap != null && userStatusToPlayerPrefKeyMap.ContainsKey(statusKey))
+					? userStatusToPlayerPrefKeyMap[statusKey]
+					: statusKey;
+				int value = PlayerPrefs.GetInt(prefKey, 0);
+				bool hasKey = PlayerPrefs.HasKey(prefKey);
+				Debug.Log($"[UserStatusSync] {prefKey} (int): {value} (hasKey: {hasKey})");
+			}
+			
+			// Print common string keys
+			string[] commonStringKeys = { "session_token" };
+			foreach (string key in commonStringKeys)
+			{
+				if (PlayerPrefs.HasKey(key))
+				{
+					string value = PlayerPrefs.GetString(key, "");
+					Debug.Log($"[UserStatusSync] {key} (string): {value}");
+				}
+			}
+			
+			Debug.Log("=== [UserStatusSync] End PlayerPrefs Values ===");
+		}
+
+		/// <summary>
 		/// Save user status to server using configured ServerConfig.BaseUrl.
 		/// </summary>
 		public static void SaveUserStatus(MonoBehaviour host)

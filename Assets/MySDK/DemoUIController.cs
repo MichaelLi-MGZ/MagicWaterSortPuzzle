@@ -1,11 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using MyGamez.MySDK.Api;
 using MyGamez.Demo.MySDKHelpers;
 using System;
-using UnityEngine.Networking;
 
 
 namespace MyGamez.Demo
@@ -32,6 +32,7 @@ namespace MyGamez.Demo
         private bool loginPending = false; // Track if login is waiting for window to be hidden
 
         private IOSLoginController iosLoginController;
+        private AndroidLoginController androidLoginController;
 
         private void Awake()
         {
@@ -75,14 +76,16 @@ namespace MyGamez.Demo
             toastMessage.SetActive(false);
             ToastMessage.SetToastObject(toastMessage, this);
 
-            // ServerConfig.BaseUrl is the single source of truth for server URL
-
 #if UNITY_IOS
             iosLoginController = new IOSLoginController(this, MyGamez.Demo.ServerConfig.BaseUrl, InitializeIOSMySDKWithAppleAuth);
             Debug.Log("[DemoUIController][iOS] IOSLoginController created with baseUrl=" + MyGamez.Demo.ServerConfig.BaseUrl);
             
             // Initialize Apple Sign-In button visibility
             CheckSessionTokenAndUpdateButton();
+#elif UNITY_ANDROID
+            appleSignInButton.SetActive(false);
+            androidLoginController = new AndroidLoginController(this, MyGamez.Demo.ServerConfig.BaseUrl);
+            Debug.Log("[DemoUIController][Android] AndroidLoginController created with baseUrl=" + MyGamez.Demo.ServerConfig.BaseUrl);
 #endif
 
             Debug.Log("[Startup] HasAcceptedPrivacyPolicy=" + HasAcceptedPrivacyPolicy());
@@ -530,11 +533,13 @@ namespace MyGamez.Demo
                 loginStateListener = new MySDKHelpers.LoginListenerExample(this);
                 MySDK.Api.Login.RegisterLoginStateListener(loginStateListener);
             }
+
             List<MySDK.Api.Login.Vendor> vendors = MySDK.Api.Login.GetAvailableVendors();
             Debug.Log("Vendors available: " + vendors.ToString());
 
             // ISBN version always has only one vendor
             MySDK.Api.Login.DoLogin(vendors[0]);
+            
 #endif
         }
 
@@ -599,7 +604,18 @@ namespace MyGamez.Demo
                 return;
             }
             Debug.Log("Going to initialize antiaddiction for playerId: " + playerId);
-            MySDK.Api.AntiAddiction.Initialize(playerId, new MySDKHelpers.AntiAddictionCallback(this));
+
+            if (androidLoginController == null)
+            {
+                androidLoginController = new AndroidLoginController(this, MyGamez.Demo.ServerConfig.BaseUrl);
+            }
+            Debug.Log("Going to load user status for playerId: " + playerId);
+            androidLoginController.LoadUserStatus(playerId, () =>
+            {
+                Debug.Log("User status loaded, going to initialize antiaddiction");
+                UserStatusSync.PrintAllPlayerPrefs();
+                MySDK.Api.AntiAddiction.Initialize(playerId, new MySDKHelpers.AntiAddictionCallback(this));
+            });
         }
 
         

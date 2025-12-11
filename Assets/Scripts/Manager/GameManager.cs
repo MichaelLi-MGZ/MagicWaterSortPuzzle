@@ -936,6 +936,17 @@ public class GameManager : MonoBehaviour
         GameManager.instance.SaveCoin();
     }
 
+    public string getPlayerId()
+    {
+#if UNITY_ANDROID
+        return MyGamez.MySDK.Api.Login.GetLoginInfo().PlayerID ?? "Guest";
+#elif UNITY_IOS
+        return MyGamezGameObject.GetCurrentMyGamezId() ?? "Guest";
+#else
+        return "Guest";
+#endif
+    }
+
     public void OnLogoutButtonClicked()
     {
         Debug.Log("Logout button clicked");
@@ -1053,6 +1064,9 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.DeleteKey("CurrentPalette");
         PlayerPrefs.DeleteKey("CurrentWall");
         PlayerPrefs.DeleteKey("RestartNumber");
+        // Clear user status (both local and server-side)
+        UserStatusSync.ClearUserStatus(this);
+        UserStatusSync.PrintAllPlayerPrefs();
         
     }
 

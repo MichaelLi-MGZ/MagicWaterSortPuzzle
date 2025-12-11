@@ -191,7 +191,8 @@ public class TubeController : MonoBehaviour
     public void LockTube()
     {
         currentState = BOTTLE_STATE.LOCK;
-        rewardIcon.SetActive(true);
+        //TODO: Implement with ads in future disbale rewardIcon
+        rewardIcon.SetActive(false);
         plusIcon.SetActive(true);
         bottleBodySR.color = new Color(1.0f, 1.0f, 1.0f, 0.1f);
 

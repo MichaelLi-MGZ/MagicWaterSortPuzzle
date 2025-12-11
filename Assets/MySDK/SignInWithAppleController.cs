@@ -7,11 +7,13 @@ using DG.Tweening;
 /// </summary>
 public class SignInWithAppleController : MonoBehaviour
 {
+
     /// <summary>
     /// Called when Apple Sign-In button is clicked
     /// </summary>
     public void OnButtonClicked()
     {
+#if UNITY_IOS
         // Find DemoUIController and call its Apple Sign-In method
         MyGamez.Demo.DemoUIController demoController = FindObjectOfType<MyGamez.Demo.DemoUIController>();
         if (demoController != null)
@@ -22,5 +24,9 @@ public class SignInWithAppleController : MonoBehaviour
         {
             Debug.LogError("[SignInWithAppleController] DemoUIController not found");
         }
+#else
+        // Guard against calling the iOS-only handler on other platforms
+        Debug.LogWarning("[SignInWithAppleController] Apple Sign-In is only available on iOS");
+#endif
     }
 }
