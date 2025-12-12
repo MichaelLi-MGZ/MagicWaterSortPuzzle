@@ -66,6 +66,9 @@ public class GameManager : MonoBehaviour
 
     public static GameManager instance;
 
+    private const int MaxLevelsToCheck = 500;
+    private int cachedMaxAvailableLevel = -1;
+
 
     private void Awake()
     {
@@ -97,6 +100,15 @@ public class GameManager : MonoBehaviour
         else
         {
             GetCurrentLevel();
+        }
+
+        // Clamp stored level to available content to avoid loading missing levels
+        int maxAvailableLevel = GetMaxAvailableLevel();
+        if (currentLv > maxAvailableLevel)
+        {
+            currentLv = maxAvailableLevel;
+            PlayerPrefs.SetInt("CurrentLevel", currentLv);
+            PlayerPrefs.Save();
         }
         bgManager.SetBG(PlayerPrefs.GetInt("CurrentWall"));
 
@@ -745,7 +757,18 @@ public class GameManager : MonoBehaviour
     IEnumerator ShowFinishLevelIE()
     {
         yield return new WaitForSeconds(0.5f);
-        currentLv++;
+        int maxAvailableLevel = GetMaxAvailableLevel();
+
+        if (currentLv < maxAvailableLevel)
+        {
+            currentLv++;
+        }
+        else
+        {
+            // Keep the level at the last available one so we can send player to the selector
+            currentLv = maxAvailableLevel;
+        }
+
         PlayerPrefs.SetInt("CurrentLevel", currentLv);
         PlayerPrefs.Save();
 
@@ -790,6 +813,25 @@ public class GameManager : MonoBehaviour
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventDataCurrentPosition, results);
         return results.Count > 0;
+    }
+
+    private int GetMaxAvailableLevel()
+    {
+        if (cachedMaxAvailableLevel > 0)
+            return cachedMaxAvailableLevel;
+
+        int highestLevelFound = 1;
+        for (int i = 1; i <= MaxLevelsToCheck; i++)
+        {
+            var levelAsset = Resources.Load<LevelSetting>("LevelConfigs/Level" + i);
+            if (levelAsset != null)
+                highestLevelFound = i;
+            else
+                break;
+        }
+
+        cachedMaxAvailableLevel = highestLevelFound;
+        return cachedMaxAvailableLevel;
     }
 
     void SetFirstData()
@@ -854,6 +896,17 @@ public class GameManager : MonoBehaviour
 
     public void NextLevel()
     {
+        int maxAvailableLevel = GetMaxAvailableLevel();
+        if (currentLv >= maxAvailableLevel)
+        {
+            // We're past the last available level – go to level select instead of reloading a missing level
+            currentLv = maxAvailableLevel;
+            PlayerPrefs.SetInt("CurrentLevel", currentLv);
+            PlayerPrefs.Save();
+            SceneRouter.LoadLevelSelectScene();
+            return;
+        }
+
         for (int i = 0; i < GameManager.instance.tubeListInGame.Count; i++)
         {
             Destroy(GameManager.instance.tubeListInGame[i].gameObject);

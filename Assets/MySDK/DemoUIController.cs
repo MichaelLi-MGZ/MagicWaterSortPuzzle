@@ -31,6 +31,8 @@ namespace MyGamez.Demo
         private float lastVisibilityCheckTime = 0f;
         private bool loginPending = false; // Track if login is waiting for window to be hidden
 
+        private bool gcTried = false;
+
         private IOSLoginController iosLoginController;
         private AndroidLoginController androidLoginController;
 
@@ -77,6 +79,9 @@ namespace MyGamez.Demo
             ToastMessage.SetToastObject(toastMessage, this);
 
 #if UNITY_IOS
+            TryAuthenticateGameCenter();
+            //TODO: Remove this after testing
+            UserStatusSync.ClearUserStatus(this);
             iosLoginController = new IOSLoginController(this, MyGamez.Demo.ServerConfig.BaseUrl, InitializeIOSMySDKWithAppleAuth);
             Debug.Log("[DemoUIController][iOS] IOSLoginController created with baseUrl=" + MyGamez.Demo.ServerConfig.BaseUrl);
             
@@ -99,6 +104,22 @@ namespace MyGamez.Demo
                 Debug.Log("[Startup] Privacy Policy not accepted, showing dialog...");
                 ShowPrivacyPolicyAndTosDialog();
             }
+        }
+
+        private void TryAuthenticateGameCenter()
+        {
+            if (gcTried) return;
+            gcTried = true;
+
+#if UNITY_IOS
+            if (!Social.localUser.authenticated)
+            {
+                Social.localUser.Authenticate(success =>
+                {
+                    Debug.Log("Game Center Auth: " + success);
+                });
+            }
+#endif
         }
 
         private bool HasAcceptedPrivacyPolicy()

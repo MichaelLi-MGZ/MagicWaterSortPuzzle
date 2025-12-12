@@ -13949,7 +13949,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u4E2A\u4EBA\u8D44\u6599"
+  m_text: PLAYERID
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
   m_sharedMaterial: {fileID: 8980274474525062747, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
@@ -23569,7 +23569,7 @@ MonoBehaviour:
     achieBoardLock: {fileID: 21300000, guid: 14d40b5be4cc842b3a297818186d5537, type: 3}
     achieBoardUnLock: {fileID: 21300000, guid: 0aabfd1307ee44b0b9f59785bc8f8c7f, type: 3}
     strokeLock: {fileID: 21300000, guid: ac06b056accee437e89adf4ab13a39c3, type: 3}
-    strokeUnLock: {fileID: 0}
+    strokeUnLock: {fileID: 21300000, guid: 6b775893ff73849599f75952b5371eef, type: 3}
     achieName: "\u6218\u7565\u5BB6"
     achieDes: "\u5B8C\u6210\u7B2C 200 \u5173"
     bonusCoin: 100
