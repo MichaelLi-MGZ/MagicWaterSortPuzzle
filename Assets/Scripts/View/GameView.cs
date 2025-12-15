@@ -38,7 +38,7 @@ public class GameView : BaseView
     public void MoreBottle()
     {
         AudioManager.instance.clickBtn.Play();
-        //GameManager.instance.levelGen.AddMoreBottle();
+        GameManager.instance.levelGen.AddMoreBottle();
     }
 
     public void ShowBooster()
@@ -102,6 +102,8 @@ public class GameView : BaseView
         else
         {
             //AdsControl.Instance.ShowRewardedAd(AdsControl.REWARD_TYPE.UNDO);
+            //TODO: Implement with ads in future
+            UndoCB();
         }
 
         if (GameManager.instance.currentLv == 3 && !GameManager.instance.finishFinalTut)
@@ -136,7 +138,8 @@ public class GameView : BaseView
         {
             remainUndoTxt.gameObject.SetActive(false);
             undoDes.SetActive(true);
-            undoRWIcon.SetActive(true);
+            //TODO: Implement with ads in future disbale undoRWIcon
+            undoRWIcon.SetActive(false);
         }
     }
 
@@ -181,22 +184,22 @@ public class GameView : BaseView
     {
         
         GameManager.instance.uiManager.hintView.ShowView();
-        
-        if(!unlockHintView)
-        {
-            hintRWIcon.SetActive(false);
-            unlockHintView = true;
-        }
+        //TODO: Implement with ads in future
+        // if(!unlockHintView)
+        // {
+        //     hintRWIcon.SetActive(false);
+        //     unlockHintView = true;
+        // }
     }
 
     public void ShowHintView()
     {
         AudioManager.instance.clickBtn.Play();
-
-        if (!unlockHintView)
-           WatchAds();
-        else
-            ShowHintViewCB();
+        //TODO: Implement with ads in future
+        // if (!unlockHintView)
+        //    WatchAds();
+        // else
+        ShowHintViewCB();
     }
 
    public void WatchAds()

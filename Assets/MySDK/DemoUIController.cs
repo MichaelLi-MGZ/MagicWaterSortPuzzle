@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -6,17 +7,20 @@ using MyGamez.MySDK.Api;
 using MyGamez.Demo.MySDKHelpers;
 using System;
 
+
 namespace MyGamez.Demo
 {
     public class DemoUIController : MyGamezObserver
     {
         
-        public TMPro.TMP_Text goldAmount;
         public DialogWindowController dialogWindow;
+        public SingleButtonDialogWindowController singleButtonDialogWindow;
+        public DialogWindowController warningDialogWindow;
         public RIDCheckDialogController RIDCheckDialog;
         public GameObject toastMessage;
         public NotificationBackground notificationBackground;
         public AgeAppropriateWindowController ageAppropriateWindowController; // Reference to window controller
+        public GameObject appleSignInButton; // Apple Sign-In button (hidden by default)
 
         private bool playing = false;
         private MySDK.Api.Login.ILoginStateListener loginStateListener;
@@ -26,6 +30,11 @@ namespace MyGamez.Demo
         private float visibilityCheckInterval = 0.5f; // Check every 0.5 seconds
         private float lastVisibilityCheckTime = 0f;
         private bool loginPending = false; // Track if login is waiting for window to be hidden
+
+        private bool gcTried = false;
+
+        private IOSLoginController iosLoginController;
+        private AndroidLoginController androidLoginController;
 
         private void Awake()
         {
@@ -46,6 +55,9 @@ namespace MyGamez.Demo
         {
             // Monitor window visibility changes
             MonitorWindowVisibility();
+#if UNITY_IOS
+            iosLoginController?.Update();
+#endif
         }
         
         private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
@@ -61,31 +73,232 @@ namespace MyGamez.Demo
             }
         }
 
-        // Start is called before the first frame update
         private void Start()
         {
-            toastMessage.SetActive(false);  // hide until called to show
+            toastMessage.SetActive(false);
             ToastMessage.SetToastObject(toastMessage, this);
-            if (! MySDK.Api.Features.PrivacyPolicy.IsPpAccepted())
+
+#if UNITY_IOS
+            TryAuthenticateGameCenter();
+            //TODO: Remove this after testing
+            UserStatusSync.ClearUserStatus(this);
+            iosLoginController = new IOSLoginController(this, MyGamez.Demo.ServerConfig.BaseUrl, InitializeIOSMySDKWithAppleAuth);
+            Debug.Log("[DemoUIController][iOS] IOSLoginController created with baseUrl=" + MyGamez.Demo.ServerConfig.BaseUrl);
+            
+            // Initialize Apple Sign-In button visibility
+            CheckSessionTokenAndUpdateButton();
+#elif UNITY_ANDROID
+            appleSignInButton.SetActive(false);
+            androidLoginController = new AndroidLoginController(this, MyGamez.Demo.ServerConfig.BaseUrl);
+            Debug.Log("[DemoUIController][Android] AndroidLoginController created with baseUrl=" + MyGamez.Demo.ServerConfig.BaseUrl);
+#endif
+
+            Debug.Log("[Startup] HasAcceptedPrivacyPolicy=" + HasAcceptedPrivacyPolicy());
+            if (HasAcceptedPrivacyPolicy())
             {
-                // Player has not accepted PP & ToS earlier
-                ShowPrivacyPolicyAndTosDialog();
+                Debug.Log("[Startup] Privacy Policy accepted, initializing SDK...");
+                InitializeMySDK();
             }
             else
             {
-                Debug.Log("Going to init MySDK");
-                MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
+                Debug.Log("[Startup] Privacy Policy not accepted, showing dialog...");
+                ShowPrivacyPolicyAndTosDialog();
             }
         }
 
-        private void ShowPrivacyPolicyAndTosDialog()
+        private void TryAuthenticateGameCenter()
+        {
+            if (gcTried) return;
+            gcTried = true;
+
+#if UNITY_IOS
+            if (!Social.localUser.authenticated)
+            {
+                Social.localUser.Authenticate(success =>
+                {
+                    Debug.Log("Game Center Auth: " + success);
+                });
+            }
+#endif
+        }
+
+        private bool HasAcceptedPrivacyPolicy()
+        {
+#if UNITY_IOS
+                return PlayerPrefs.HasKey("IsPpAccepted") && PlayerPrefs.GetInt("IsPpAccepted") == 1;
+#else
+                return MySDK.Api.Features.PrivacyPolicy.IsPpAccepted();
+#endif
+        }
+
+        private void InitializeMySDK()
+        {
+#if UNITY_IOS
+                Debug.Log("[Startup] Initializing iOS SDK...");
+                // Check sessionToken before proceeding
+                string sessionToken = PlayerPrefs.GetString("session_token", string.Empty);
+                if (string.IsNullOrEmpty(sessionToken))
+                {
+                    Debug.Log("[Startup] No session token found, showing Apple Sign-In button");
+                    // Button visibility is already set in CheckSessionTokenAndUpdateButton()
+                    // Don't proceed with login flow yet - wait for user to click the button
+                    return;
+                }
+                else
+                {
+                    Debug.Log("[Startup] Session token found, proceeding with login flow");
+                    Debug.Log("[Startup] Triggering iOS login flow via IOSLoginController.BeginLoginFlow()");
+                    iosLoginController.BeginLoginFlow();
+                }
+#else
+                Debug.Log("[Startup] Initializing Android/Editor SDK...");
+                MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
+#endif
+        }
+
+#if UNITY_IOS
+
+        private void InitializeIOSMySDKWithAppleAuth()
+        {
+            Debug.Log("[iOS] Initializing MySDK with Apple authentication (post-session)");
+			// iOS SDK configuration with Apple authentication via JWT
+			StartCoroutine(RequestJwtAndInit());
+        }
+
+		private System.Collections.IEnumerator RequestJwtAndInit()
+		{
+			// Delegate JWT fetching to IOSLoginController, keep only initialization here
+			bool done = false;
+            string appName = "magicwatersort";
+            string env = ServerConfig.MygamezEnv;
+			string receivedToken = null;
+			iosLoginController.RequestJwtToken(ServerConfig.MygamezEnv, appName, token => { receivedToken = token; done = true; });
+			while (!done) yield return null;
+			if (string.IsNullOrEmpty(receivedToken))
+			{
+				Debug.LogError("[iOS] Failed to obtain JWT token");
+				yield break;
+			}
+			//string cpid = "mygamez";
+            string cpid = "mygamez_pw"; // Replace with actual CPID
+            string authParams = $"{{\"pw\":\"3b68f6085d578ef0a9a5af47531d3e7a\",\"app\":\"test-app\",\"player_id\":\"073b657a-96ef-5d11-a139-644cd85\"}}"; // Replace with actual authParams
+			string backendUrl =  ServerConfig.MygamezEnv == "dev" ? "https://antiaddiction.dev.mygamez.cn/api/v1/usr" : "https://antiaddiction.myservicez.cn/api/v1/usr";
+			//string authParams = "{\"jwt\":\"" + receivedToken + "\"}";
+            Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (token=" + receivedToken + ")");
+			Debug.Log("[iOS] Calling MyGamezGameObject.DoInitialize with JWT (len=" + receivedToken.Length + ")");
+			MyGamezGameObject.DoInitialize(cpid, backendUrl, authParams, OnIOSSDKInitialized);
+		}
+#endif
+
+        private void OnIOSSDKInitialized(MyGamezBridge.EventCode eventCode)
+        {
+            Debug.Log("iOS MySDK initialization result: " + eventCode);
+            
+            switch (eventCode)
+            {
+                case MyGamezBridge.EventCode.UserRightsDetermined:
+                    Debug.Log("iOS MySDK: User rights determined, starting game flow");
+                    RequestIOSGameStart();
+                    break;
+                case MyGamezBridge.EventCode.RidCheckRequired:
+                    Debug.Log("iOS MySDK: RID check required");
+                    ShowRIDCheckDialog();
+                    break;
+                case MyGamezBridge.EventCode.DailyGameTimeDepleted:
+                    Debug.Log("iOS MySDK: Daily game time depleted");
+                    ShowTimeOutDialog();
+                    break;
+                case MyGamezBridge.EventCode.PlayingNotAllowedDueToTimeOfDayConstraints:
+                    Debug.Log("iOS MySDK: Player not allowed to play due to time of day constraints");               ShowTimeOutDialog();
+                    break;
+                case MyGamezBridge.EventCode.GuestModeNotGranted:
+                    Debug.Log("iOS MySDK: Guest mode not granted");
+                    ShowErrorDialog();
+                    break;
+                case MyGamezBridge.EventCode.GeneralError:
+                    Debug.Log("iOS MySDK: General error occurred");
+                    ShowErrorDialog();
+                    break;
+                default:
+                    Debug.Log("iOS MySDK: Unknown event code: " + eventCode);
+                    break;
+            }
+        }
+
+        private void RequestIOSGameStart()
+        {
+            Debug.Log("Requesting iOS game start");
+            MyGamezGameObject.DoStart(OnIOSGameStartResult);
+        }
+
+        private void OnIOSGameStartResult(MyGamezBridge.EventCode eventCode)
+        {
+            Debug.Log("iOS game start result: " + eventCode);
+            
+            switch (eventCode)
+            {
+                case MyGamezBridge.EventCode.GameStartAllowed:
+                    Debug.Log("iOS MySDK: Game start allowed");
+                    if (!MyGamezGameObject.IsAdult())
+                    {
+                        Debug.Log("Player is not adult, show underage play time limit warning dialog");
+                        MyGamezGameObject.DoRequestPromptCallback(3, ShowUnderagePlayTimeLimitWarningDialogCallback);
+                    }else{
+                        Debug.Log("Player is adult, start game");
+                        ShowProgressAndLogin();
+                    }
+                    break;
+                case MyGamezBridge.EventCode.GuestModeGameTimeDepleted:
+                case MyGamezBridge.EventCode.DailyGameTimeDepleted:
+                    Debug.Log("iOS MySDK: Game time depleted");
+                    ShowTimeOutDialog();
+                    break;
+                case MyGamezBridge.EventCode.PlayingNotAllowedDueToTimeOfDayConstraints:
+                    Debug.Log("iOS MySDK: Playing not allowed due to time constraints");
+                    ShowTimeOutDialog();
+                    break;
+                case MyGamezBridge.EventCode.RidCheckRequired:
+                    Debug.Log("iOS MySDK: RID check required");
+                    ShowRIDCheckDialog();
+                    break;
+                default:
+                    Debug.Log("iOS MySDK: Unknown game start event: " + eventCode);
+                    break;
+            }
+        }
+
+
+        private void ShowUnderagePlayTimeLimitWarningDialogCallback(string title, string body, string button)
+        {
+            if (singleButtonDialogWindow != null)
+            {
+                Debug.Log("ShowUnderagePlayTimeLimitWarningDialogCallback, Title: " + title);
+                Debug.Log("ShowUnderagePlayTimeLimitWarningDialogCallback, Body: " + body);
+                Debug.Log("ShowUnderagePlayTimeLimitWarningDialogCallbackg, Button: " + button);
+                singleButtonDialogWindow.setTitleText(title);
+                singleButtonDialogWindow.setMessageText(body);
+                singleButtonDialogWindow.setLeftText(button);
+                singleButtonDialogWindow.setLeftCallback(
+                    delegate
+                    {
+                        singleButtonDialogWindow.hide();
+                        ShowProgressAndLogin();
+                    });
+                singleButtonDialogWindow.show();
+            }
+            else
+            {
+                Debug.LogError("DialogWindowController not assigned in GameManager!");
+            }
+        }
+
+        public void ShowPrivacyPolicyAndTosDialog()
         {
             // Show dialog to the player.
             dialogWindow.setLeftCallback(
                 delegate
                 {
-                    dialogWindow.hide();
-                    MySDK.Api.App.QuitApp();
+                    ShowWarningDialog();
                 });
             dialogWindow.setRightButtonActive(true);
             dialogWindow.setRightCallback(
@@ -98,16 +311,43 @@ namespace MyGamez.Demo
                     // !playing = First start and need to initialise MySDK
                     if (!playing)
                     {
+ #if UNITY_IOS
+                        PlayerPrefs.SetInt("IsPpAccepted", 1); // 1 for accepted, 0 for not accepted
+                        PlayerPrefs.Save();
+                        // Update button visibility after privacy policy is accepted
+                        CheckSessionTokenAndUpdateButton();
+#else
                         MySDK.Api.Features.PrivacyPolicy.SetPpAccepted();
-
+#endif
                         // Initialise MySDK
                         Debug.Log("Going to init MySDK");
-                        MySDK.Api.MySDKInit.Initialize(new MySDKHelpers.MySDKInitCallback(this));
+                        InitializeMySDK();
                     }
 
                 });
             Debug.Log("Show PP Dialog");
             dialogWindow.show();
+        }
+
+        private void ShowWarningDialog()
+        {
+            // Show dialog to the player.
+            warningDialogWindow.setLeftCallback(
+                delegate
+                {
+                    warningDialogWindow.hide();
+                    // show warning dialog
+                    MySDK.Api.App.QuitApp();
+                });
+            warningDialogWindow.setRightButtonActive(true);
+            warningDialogWindow.setRightCallback(
+                delegate
+                {
+                    // Demo code
+                    warningDialogWindow.hide();
+                });
+            Debug.Log("Show PP Dialog");
+            warningDialogWindow.show();
         }
 
         private int mySdkInitCounter = 0;
@@ -126,6 +366,7 @@ namespace MyGamez.Demo
                 case ResultCode.SUCCESS:
                 case ResultCode.ALREADY_DONE:
                     // Initialisation is completed. Show progress bar before login.
+                    Debug.Log($"[DemoUIController] MySDK Init {result.ResultCode}, triggering ShowProgressAndLogin()");
                     ShowProgressAndLogin();
                     break;
                 case ResultCode.PP_AND_TOS_NOT_ACCEPTED:
@@ -167,9 +408,12 @@ namespace MyGamez.Demo
             // Check for state changes
             if (currentWindowVisible != previousWindowVisible)
             {
+                Debug.Log($"[DemoUIController] Window visibility changed: {previousWindowVisible} -> {currentWindowVisible}, loginPending: {loginPending}");
+                
                 // If window became hidden and login is pending, proceed with login
                 if (!currentWindowVisible && previousWindowVisible && loginPending)
                 {
+                    Debug.Log("[DemoUIController] Window became hidden and login is pending, proceeding with login");
                     loginPending = false;
                     Login();
                 }
@@ -183,18 +427,28 @@ namespace MyGamez.Demo
         /// </summary>
         private void ShowProgressAndLogin()
         {
+            Debug.Log("[DemoUIController] ShowProgressAndLogin() called");
+            
             if (notificationBackground != null)
             {
+                Debug.Log("[DemoUIController] NotificationBackground found, showing progress bar");
+                Debug.Log($"[DemoUIController] NotificationBackground.IsVisible() before Show(): {notificationBackground.IsVisible()}");
+                
                 // Show the notification background with progress bar
                 notificationBackground.Show();
                 
+                Debug.Log($"[DemoUIController] NotificationBackground.IsVisible() after Show(): {notificationBackground.IsVisible()}");
+                Debug.Log("[DemoUIController] Starting progress bar animation (8 seconds)");
+                
                 // Start the 8-second progress bar, then check window visibility before login
                 notificationBackground.StartProgress(() => {
+                    Debug.Log("[DemoUIController] Progress bar animation completed, checking window visibility before login");
                     CheckWindowVisibilityAndLogin();
                 });
             }
             else
             {
+                Debug.LogWarning("[DemoUIController] NotificationBackground is null, skipping progress bar and proceeding directly to login check");
                 CheckWindowVisibilityAndLogin();
             }
         }
@@ -242,24 +496,30 @@ namespace MyGamez.Demo
         /// </summary>
         private void CheckWindowVisibilityAndLogin()
         {
+            Debug.Log("[DemoUIController] CheckWindowVisibilityAndLogin() called");
+            
             AgeAppropriateWindowController controller = GetAgeAppropriateWindowController();
             
             if (controller == null)
             {
+                Debug.Log("[DemoUIController] No AgeAppropriateWindowController found, proceeding with login immediately");
                 Login();
                 return;
             }
             
             bool isWindowVisible = controller.IsWindowVisible();
+            Debug.Log($"[DemoUIController] AgeAppropriateWindowController found, window visible: {isWindowVisible}");
             
             if (!isWindowVisible)
             {
                 // Window is not visible, proceed with login immediately
+                Debug.Log("[DemoUIController] Window is not visible, proceeding with login immediately");
                 Login();
             }
             else
             {
                 // Window is visible, wait for it to become hidden
+                Debug.Log("[DemoUIController] Window is visible, setting loginPending=true and waiting for window to be hidden");
                 loginPending = true;
                 previousWindowVisible = true; // Set initial state
             }
@@ -268,23 +528,25 @@ namespace MyGamez.Demo
         private void ShowErrorDialog()
         {
             // Show dialog to the player.
-            dialogWindow.setTitleText("Error occurred repeatedly");
-            dialogWindow.setMessageText("System encoutered errors repeatedly. Please check internet connection and try again later.");
-            dialogWindow.setLeftText("OK");
-            dialogWindow.setLeftCallback(
+            singleButtonDialogWindow.setTitleText("发生错误");
+            singleButtonDialogWindow.setMessageText("系统反复出现错误。请检查网络连接，稍后再试。");
+            singleButtonDialogWindow.setLeftText("确定");
+            singleButtonDialogWindow.setLeftCallback(
                 delegate
                 {
-                    dialogWindow.hide();
+                    singleButtonDialogWindow.hide();
                     MySDK.Api.App.QuitApp();
                     
                 });
-            dialogWindow.setRightButtonActive(false);
-            dialogWindow.show();
+            singleButtonDialogWindow.show();
         }
 
 
         private void Login()
         {   
+#if UNITY_IOS
+            StartGame();
+#else
             if (loginStateListener == null)
             {
                 // Set LoginStateListener
@@ -292,11 +554,14 @@ namespace MyGamez.Demo
                 loginStateListener = new MySDKHelpers.LoginListenerExample(this);
                 MySDK.Api.Login.RegisterLoginStateListener(loginStateListener);
             }
+
             List<MySDK.Api.Login.Vendor> vendors = MySDK.Api.Login.GetAvailableVendors();
             Debug.Log("Vendors available: " + vendors.ToString());
 
             // ISBN version always has only one vendor
             MySDK.Api.Login.DoLogin(vendors[0]);
+            
+#endif
         }
 
         /// <summary>
@@ -314,29 +579,35 @@ namespace MyGamez.Demo
                     InitializeAntiaddiction();
                     break;
                 case MySDK.Api.Login.LoginState.LOGIN_FAILED:
-                    ToastMessage.Show("Failed to login");
+                    //ToastMessage.Show("Failed to login");
+                    Debug.Log("Failed to login");
                     if (!playing) // Not in game yet, open login again to retry
                     {
                         Login();
                     }
                     break;
                 case MySDK.Api.Login.LoginState.LOGIN_CANCELED:
-                    ToastMessage.Show("User canceled login");
+                    //ToastMessage.Show("User canceled login");
+                    Debug.Log("User canceled login");
                     break;
                 case MySDK.Api.Login.LoginState.LOGGED_OUT:
-                    ToastMessage.Show("Successfully logged out");
+                    //ToastMessage.Show("Successfully logged out");
+                    Debug.Log("Successfully logged out");
                     // MySDK does not request restart but demo will restart to show login.
                     MySDK.Api.App.RestartApp();
                     break;
                 case MySDK.Api.Login.LoginState.LOGOUT_RESTART:
-                    ToastMessage.Show("Logout restart");
+                    //ToastMessage.Show("Logout restart");
+                    Debug.Log("Logout restart");
                     MySDK.Api.App.RestartApp();
                     break;
                 case MySDK.Api.Login.LoginState.LOGOUT_FAILED:
-                    ToastMessage.Show("Failed to logout");
+                    //ToastMessage.Show("Failed to logout");
+                    Debug.Log("Failed to logout");
                     break;
                 case MySDK.Api.Login.LoginState.LOGOUT_CANCELED:
-                    ToastMessage.Show("User canceled logout");
+                    //ToastMessage.Show("User canceled logout");
+                    Debug.Log("User canceled logout");
                     break;
 
             }
@@ -354,7 +625,18 @@ namespace MyGamez.Demo
                 return;
             }
             Debug.Log("Going to initialize antiaddiction for playerId: " + playerId);
-            MySDK.Api.AntiAddiction.Initialize(playerId, new MySDKHelpers.AntiAddictionCallback(this));
+
+            if (androidLoginController == null)
+            {
+                androidLoginController = new AndroidLoginController(this, MyGamez.Demo.ServerConfig.BaseUrl);
+            }
+            Debug.Log("Going to load user status for playerId: " + playerId);
+            androidLoginController.LoadUserStatus(playerId, () =>
+            {
+                Debug.Log("User status loaded, going to initialize antiaddiction");
+                UserStatusSync.PrintAllPlayerPrefs();
+                MySDK.Api.AntiAddiction.Initialize(playerId, new MySDKHelpers.AntiAddictionCallback(this));
+            });
         }
 
         
@@ -387,7 +669,8 @@ namespace MyGamez.Demo
                     InitializeAntiaddiction();
                     break;
                 case ResultCode.GENERAL_ERROR:
-                    ToastMessage.Show("Unexpected error, trying again", 1);
+                    //ToastMessage.Show("Unexpected error, trying again", 1);
+                    Debug.Log("Unexpected error, trying again");
                     if (aaInitCounter < 2)
                         InitializeAntiaddiction();
                     else
@@ -398,56 +681,101 @@ namespace MyGamez.Demo
 
         private void ShowLimitedDialog()
         {
-            // Get Prompt data
-            string body = "您的实名认证信息尚未年满18周岁，根据未成年人防沉迷规定，未满18周岁的用户可在每周五、六、日或法定节假日的20:00~21:00进入游戏进行游玩。";
-            // TODO remove
-            Debug.Log("ShowTimeOutDialog, Body " + body);
-            // Show dialog to the player.
-            dialogWindow.setTitleText("温馨提示");
-            dialogWindow.setMessageText(body);
-            dialogWindow.setLeftText("确定");
-            dialogWindow.setLeftCallback(
-                delegate
-                {
-                    dialogWindow.hide();
-                    if (!playing)
-                    {
-                        RequestGameStart();
-                    }
-
-                });
-            dialogWindow.setRightButtonActive(false);
-            dialogWindow.show();
+            //No Limited Restrictions for now. just use timeout for temporary use.
+            ShowTimeOutDialog();
         }
 
         private void ShowTimeOutDialog()
         {
             // Get Prompt data
-            string body = "您的实名认证信息尚未年满18周岁，根据未成年人防沉迷规定，您只可在每周五、六、日或法定节假日的20:00~21:00进入游戏进行游玩。";
-            // TODO remove
-            Debug.Log("ShowTimeOutDialog, Body " + body);
+
+#if UNITY_IOS
+            Debug.Log("IOS: Show Time Out Dialog");
+            MyGamezGameObject.DoRequestPromptCallback(5, ShowPromptDialogCallback);
+#else
+            MySDK.Api.AntiAddiction.PromptDialogData data = MySDK.Api.AntiAddiction.GetTimeOfDayConstraintPromptDialogData();
+
             // Show dialog to the player.
-            dialogWindow.setTitleText("温馨提示");
-            dialogWindow.setMessageText(body);
-            dialogWindow.setLeftText("确定");
-            dialogWindow.setLeftCallback(
+            singleButtonDialogWindow.setTitleText(data.Title);
+            singleButtonDialogWindow.setMessageText(data.Body);
+            singleButtonDialogWindow.setLeftText(data.Button);
+            singleButtonDialogWindow.setLeftCallback(
                 delegate
                 {
-                    dialogWindow.hide();
+                    singleButtonDialogWindow.hide();
                     MySDK.Api.App.QuitApp();
                 });
-            dialogWindow.setRightButtonActive(false);
-            dialogWindow.show();
+            singleButtonDialogWindow.show();
+#endif
+        }
+
+        private void ShowPromptDialogCallback(string title, string body, string button)
+        {
+            if (singleButtonDialogWindow != null)
+            {
+                Debug.Log("Show PromptDialog, Title: " + title);
+                Debug.Log("Show PromptDialog, Body: " + body);
+                Debug.Log("Show PromptDialog, Button: " + button);
+                singleButtonDialogWindow.setTitleText(title);
+                singleButtonDialogWindow.setMessageText(body);
+                singleButtonDialogWindow.setLeftText(button);
+                singleButtonDialogWindow.setLeftCallback(
+                    delegate
+                    {
+                        singleButtonDialogWindow.hide();
+                        Application.Quit();
+                    });
+                singleButtonDialogWindow.show();
+            }
+            else
+            {
+                Debug.LogError("DialogWindowController not assigned in GameManager!");
+            }
         }
 
         private void ShowRIDCheckDialog()
         {
             RIDCheckDialog.SetValidateClickedCallback(
                 delegate {
+#if UNITY_ANDROID
                     MySDK.Api.AntiAddiction.AttemptRidCheck(RIDCheckDialog.GetName(), RIDCheckDialog.GetRIN(), new MySDKHelpers.RIDCheckValidationListener(this));
+#elif UNITY_IOS
+                    MyGamezGameObject.DoAttemptRidCheck(RIDCheckDialog.GetName(), RIDCheckDialog.GetRIN(), OnIOSRidCheckResult);
+#endif
                     RIDCheckDialog.Hide();
                 });
             RIDCheckDialog.Show();
+        }
+
+        private void OnIOSRidCheckResult(MyGamezBridge.EventCode eventCode)
+        {
+            Debug.Log("iOS RID check result: " + eventCode);
+            
+            switch (eventCode)
+            {
+                case MyGamezBridge.EventCode.UserRightsDetermined:
+                    Debug.Log("iOS MySDK: RID check successful, user rights determined");
+                    Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
+                    RequestIOSGameStart();
+                    break;
+                case MyGamezBridge.EventCode.RidCheckRequired:
+                    Debug.Log("iOS MySDK: RID check failed, showing dialog again");
+                    ShowRIDCheckDialog();
+                    break;
+                case MyGamezBridge.EventCode.DailyGameTimeDepleted:
+                case MyGamezBridge.EventCode.PlayingNotAllowedDueToTimeOfDayConstraints:
+                    Debug.Log("iOS MySDK: Playing not allowed due to time constraints");
+                    Debug.Log("IOS: MyGamez player id is " + MyGamezGameObject.GetCurrentMyGamezId());
+                    ShowTimeOutDialog();
+                    break;
+                case MyGamezBridge.EventCode.GeneralError:
+                    Debug.Log("iOS MySDK: General error during RID check");
+                    ShowErrorDialog();
+                    break;
+                default:
+                    Debug.Log("iOS MySDK: Unknown RID check result: " + eventCode);
+                    break;
+            }
         }
 
         /// <summary>
@@ -459,7 +787,7 @@ namespace MyGamez.Demo
         /// <param name="msg">Additional info on the result</param>
         public override void OnRIDCheckResult(string rid, string name, ResultCode resultCode, string msg)
         {
-            ToastMessage.Show("RID Check result is " + resultCode.ToString(), ToastMessage.LENGTH_LONG);
+            //ToastMessage.Show("RID Check result is " + resultCode.ToString(), ToastMessage.LENGTH_LONG);
             Debug.Log("RID Check result is " + resultCode.ToString());
 
             switch (resultCode)
@@ -551,17 +879,18 @@ namespace MyGamez.Demo
             {
                 MySDK.Api.AntiAddiction.PromptDialogData data = MySDK.Api.AntiAddiction.GetPlayerIdentificationCompletedPromptDialogData();
                 // Show dialog to the player.
-                dialogWindow.setTitleText(data.Title);
-                dialogWindow.setMessageText(data.Body);
-                dialogWindow.setLeftText(data.Button);
-                dialogWindow.setLeftCallback(
+                Debug.Log("ShowRestrictions(): MessageText: " + data.Body);
+                Debug.Log("ShowRestrictions(): Title: " + data.Title);
+                singleButtonDialogWindow.setTitleText(data.Title);
+                singleButtonDialogWindow.setMessageText(data.Body);
+                singleButtonDialogWindow.setLeftText(data.Button);
+                singleButtonDialogWindow.setLeftCallback(
                     delegate
                     {
-                        dialogWindow.hide();
+                        singleButtonDialogWindow.hide();
                         StartGame();
                     });
-                dialogWindow.setRightButtonActive(false);
-                dialogWindow.show();
+                singleButtonDialogWindow.show();
             }
 
         }
@@ -570,15 +899,27 @@ namespace MyGamez.Demo
         {
             Debug.Log("DemoUIController: Starting game - setting up payment callbacks and loading Game scene");
             playing = true;
-            // Set Payment callback to MySDK (for Android only, iOS has different payment related methods)
-            // Callback will be triggered when player exits payment process
-            // This example callback is defined in ClassesToUseMySDK.cs
+            // Set Payment callbacks per platform
+#if UNITY_ANDROID
+            // Android: use MySDK billing callback
             MySDKHelpers.PayCallbackExample exampleCallbackPayment = new MySDKHelpers.PayCallbackExample(this);
             MySDK.Api.Billing.SetPayCallback(exampleCallbackPayment);
+#elif UNITY_IOS
+            // iOS: prepare MyGamez iOS IAP acknowledgements (purchase is requested via OnBuy50GoldButtonClicked)
+            // No explicit callback registration API exposed in MyGamez iOS bridge; we will acknowledge after purchase succeeds
+            // Example: MyGamezGameObject.DoAnnounceCompletedInappPurchase(price, OnIOSPurchaseAcknowledged);
+#endif
 
-            // Get player LoginInfo
+            // Get player identity per platform
+#if UNITY_ANDROID
             MySDK.Api.Login.LoginInfo loginInfo = MySDK.Api.Login.GetLoginInfo();
             // Use loginInfo.PlayerID to load & save progress - this demo does not save progress.
+            Debug.Log("DemoUIController: ANDROID mygamez player id (LoginInfo.PlayerID) = " + (loginInfo != null ? loginInfo.PlayerID : "<null loginInfo>"));
+#elif UNITY_IOS
+            string mygamezPlayerId = MyGamezGameObject.GetCurrentMyGamezId();
+            // Use mygamezPlayerId to load & save progress - this demo does not save progress.
+            Debug.Log("DemoUIController: IOS mygamez player id = " + (string.IsNullOrEmpty(mygamezPlayerId) ? "<empty>" : mygamezPlayerId));
+#endif
 
             // Load the Game scene where GameManager is located
             Debug.Log("MySDK initialization complete, loading Game scene...");
@@ -591,45 +932,9 @@ namespace MyGamez.Demo
             Debug.Log("mysdk DemoUIController::updateTotalGold() gold=" + gold.ToString());
             int totalGold = PlayerPrefs.GetInt("gold", 0);
             totalGold += gold;
-            goldAmount.text = totalGold.ToString();
             PlayerPrefs.SetInt("gold", totalGold);
             PlayerPrefs.Save();
         }
-
-        public void OnBuy50GoldButtonClicked()
-        {
-            // This code demonstrates how to trigger payment in Android MySDK (iOS below).
-            // Step 1: Create IAPInfo
-            // IAPInfo is for player. It has basic information of this purchase (price, name and description).
-            // Payment providers usually show IAP Info to the player in their payment UI.
-            // NOTE: Price is in Fens (Chinese cents). 100 Fens = 1 Chinese Yuan. Use only numbers that are divisible by 10.
-            // NOTE: Use Chinese in Name and Description
-            int price = 100;
-            string name = "50 Gold";
-            string description = "50 shining gold pieces";
-            MySDK.Api.Billing.IAPInfo iapInfo = new MySDK.Api.Billing.IAPInfo(price, name, description);
-
-            // Step 2: Create PayInfo
-            // PayInfo is for the game itself. It is used to identify purchase in PayCallback.
-            // CustomID can be unique ID for this purchase for example
-            // ExtraInfo can be whatever extra info you wish to add to this purchase. Some tracking ID for example.
-            // NOTE: CustomID can be max. 128 characters long. ExtraInfo can be max. 65535 characters long.
-            string customID = "iap-50-gold-1234567890";
-            string extraInfo = "Some extra info about this purchase. Whatever data you need when payment is completed. Maybe some ID for logging for example. Can be pretty long.";
-            MySDK.Api.Billing.PayInfo payInfo = new MySDK.Api.Billing.PayInfo(iapInfo, customID, extraInfo);
-
-            // Step 3: Figure out which biller to use. ISBN version has only one biller.
-            // Step 4: Start the billing process with selected biller and payInfo.
-            // MySDK will take control.
-            // Registered PayCallback will be triggered when player finishes payment process.
-            // NOTE: MySDK will popup necessary biller dialogs on top of game UI.
-            List<MySDK.Api.Billing.Biller> billers = MySDK.Api.Billing.GetAvailableBillers();
-            MySDK.Api.Billing.DoBilling(billers[0], payInfo);
-        }
-
-
-
-
 
         public void OnValidateTextButtonClicked()
         {
@@ -645,21 +950,21 @@ namespace MyGamez.Demo
             MySDK.Api.AntiAddiction.PromptDialogData data = MySDK.Api.AntiAddiction.GetStoreEnterPromptDialogData();
             if (data != null)
             {
-                dialogWindow.setTitleText(data.Title);
-                dialogWindow.setMessageText(data.Body);
-                dialogWindow.setLeftText(data.Button);
-                dialogWindow.setLeftCallback(
+                singleButtonDialogWindow.setTitleText(data.Title);
+                singleButtonDialogWindow.setMessageText(data.Body);
+                singleButtonDialogWindow.setLeftText(data.Button);
+                singleButtonDialogWindow.setLeftCallback(
                     delegate
                     {
-                        dialogWindow.hide();
+                        singleButtonDialogWindow.hide();
 
                     });
-                dialogWindow.setRightButtonActive(false);
-                dialogWindow.show();
+                singleButtonDialogWindow.show();
             }
             else
             {
-                ToastMessage.Show("Player is adult. No need to show Store Prompt.", ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Player is adult. No need to show Store Prompt.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult. No need to show Store Prompt.");
             }
         }
 
@@ -673,7 +978,8 @@ namespace MyGamez.Demo
         {
             Debug.Log("mysdk onGetLoginInfoButtonClicked()");
             MySDK.Api.Login.LoginInfo loginInfo = MySDK.Api.Login.GetLoginInfo();
-            ToastMessage.Show(MySDKHelpers.LoginInfoHelper.LoginInfoToString(loginInfo), ToastMessage.LENGTH_LONG);
+            //ToastMessage.Show(MySDKHelpers.LoginInfoHelper.LoginInfoToString(loginInfo), ToastMessage.LENGTH_LONG);
+            Debug.Log(MySDKHelpers.LoginInfoHelper.LoginInfoToString(loginInfo));
         }
 
         public void OnLogoutButtonClicked()
@@ -684,21 +990,93 @@ namespace MyGamez.Demo
         public void OnGetRemainingBalanceButtonClicked()
         {
             Debug.Log("mysdk OnGetRemainingBalanceButtonClicked()");
+#if UNITY_ANDROID
             int balance = MySDK.Api.AntiAddiction.GetIAPCreditLeft();
             if (balance == int.MaxValue)
-                ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult.");
             else
-                ToastMessage.Show("Remaining balance is " + balance, ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Remaining balance is " + balance, ToastMessage.LENGTH_LONG);
+                Debug.Log("Remaining balance is " + balance);
+#elif UNITY_IOS
+            float balance = MyGamezGameObject.GetIapCreditLeft();
+            if (balance == float.MaxValue)
+                //ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult.");
+            else
+                //ToastMessage.Show("Remaining balance is " + balance, ToastMessage.LENGTH_LONG);
+                Debug.Log("Remaining balance is " + balance);
+#endif
         }
 
         public void OnGetRemainingPlaytimeButtonClicked()
         {
             Debug.Log("mysdk OnGetRemainingPlaytimeButtonClicked()");
+#if UNITY_ANDROID
             long playtime = MySDK.Api.AntiAddiction.GetPlaytimeLeft();
             if (playtime == long.MaxValue)
-                ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult.");
             else
-                ToastMessage.Show("Remaining playtime in ms is " + playtime, ToastMessage.LENGTH_LONG);
+                //ToastMessage.Show("Remaining playtime in ms is " + playtime, ToastMessage.LENGTH_LONG);
+                Debug.Log("Remaining playtime in ms is " + playtime);
+#elif UNITY_IOS
+            int playtime = MyGamezGameObject.GetPlaytimeLeft();
+            if (playtime == int.MaxValue)
+                //ToastMessage.Show("Player is adult.", ToastMessage.LENGTH_LONG);
+                Debug.Log("Player is adult.");
+            else
+                //ToastMessage.Show("Remaining playtime in ms is " + playtime, ToastMessage.LENGTH_LONG);
+                Debug.Log("Remaining playtime in ms is " + playtime);
+#endif
         }
+
+#if UNITY_IOS
+        /// <summary>
+        /// Check sessionToken and update Apple Sign-In button visibility
+        /// </summary>
+        private void CheckSessionTokenAndUpdateButton()
+        {
+            if (appleSignInButton == null)
+            {
+                Debug.LogWarning("[DemoUIController] Apple Sign-In button is not assigned");
+                return;
+            }
+
+            string sessionToken = PlayerPrefs.GetString("session_token", string.Empty);
+            if (string.IsNullOrEmpty(sessionToken))
+            {
+                Debug.Log("[DemoUIController] Session token is empty, showing Apple Sign-In button");
+                appleSignInButton.SetActive(true);
+            }
+            else
+            {
+                Debug.Log("[DemoUIController] Session token exists, hiding Apple Sign-In button");
+                appleSignInButton.SetActive(true);
+            }
+        }
+
+        /// <summary>
+        /// Called when Apple Sign-In button is clicked
+        /// </summary>
+        public void OnAppleSignInButtonClicked()
+        {
+            Debug.Log("[DemoUIController] Apple Sign-In button clicked");
+            // Hide the button when clicked to prevent multiple clicks
+            if (appleSignInButton != null)
+            {
+                appleSignInButton.SetActive(false);
+            }
+            
+            if (iosLoginController != null)
+            {
+                iosLoginController.ShowAppleSignInDialog();
+            }
+            else
+            {
+                Debug.LogError("[DemoUIController] IOSLoginController is null, cannot show Apple Sign-In dialog");
+            }
+        }
+#endif
     }
 }

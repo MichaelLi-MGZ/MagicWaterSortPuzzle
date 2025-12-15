@@ -1,8 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
+using UnityEngine.EventSystems;
 
-public class DialogWindowController : MonoBehaviour
+public class DialogWindowController : MonoBehaviour, IPointerClickHandler
 {
     public delegate void Callback();
     public GameObject dialog;
@@ -14,6 +16,13 @@ public class DialogWindowController : MonoBehaviour
     public TMPro.TMP_Text titleText;
     public TMPro.TMP_Text msgText;
     public UnityEngine.UI.Button btnRight;
+    
+    [Header("Private Dialog Integration")]
+    public PrivateDialogWindowController privateDialogController;
+
+    [Header("Tos Dialog Integration")]
+    public TermsDialogWindowController termsDialogController;
+    
     // Start is called before the first frame update
     void Start()
     {
@@ -21,7 +30,7 @@ public class DialogWindowController : MonoBehaviour
     }
 
     public void show()
-    {
+    { 
         dialog.SetActive(true);
     }
 
@@ -87,6 +96,57 @@ public class DialogWindowController : MonoBehaviour
         }
         else{
             Debug.Log("left click callback is null");
+        }
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        int linkIndex = TMP_TextUtilities.FindIntersectingLink(msgText, Input.mousePosition, null);
+        if (linkIndex != -1)
+        {
+            TMP_LinkInfo linkInfo = msgText.textInfo.linkInfo[linkIndex];
+            string linkID = linkInfo.GetLinkID();
+
+            if (linkID == "pp")
+            {
+                Debug.Log("pp dialog show");
+                ShowPrivateDialog();
+            }
+            else if (linkID == "tos")
+            {
+                Debug.Log("pp dialog show");
+                ShowTermsDialog();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Show the private dialog when "pp" link is clicked
+    /// </summary>
+    private void ShowPrivateDialog()
+    {
+        if (privateDialogController != null)
+        {
+            privateDialogController.show();
+        }
+        else
+        {
+            Debug.LogWarning("PrivateDialogController is not assigned!");
+        }
+    }
+
+    /// <summary>
+    /// Show the Tos dialog when "tos" link is clicked
+    /// </summary>
+    private void ShowTermsDialog()
+    {
+        if (termsDialogController != null)
+        {
+            termsDialogController.show();
+        }
+        else
+        {
+            Debug.LogWarning("TermsDialogController is not assigned!");
         }
     }
 }

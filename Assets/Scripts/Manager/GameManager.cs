@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using MyGamez.MySDK.Api;
+using MyGamez.Demo;
 
 public class GameManager : MonoBehaviour
 {
@@ -59,8 +61,13 @@ public class GameManager : MonoBehaviour
 
     [Header("Logout Dialog")]
     public DialogWindowController dialogWindow;
+    [Header("Purchase Dialog")]
+    public SingleButtonDialogWindowController singleDialogWindow;
 
     public static GameManager instance;
+
+    private const int MaxLevelsToCheck = 500;
+    private int cachedMaxAvailableLevel = -1;
 
 
     private void Awake()
@@ -93,6 +100,15 @@ public class GameManager : MonoBehaviour
         else
         {
             GetCurrentLevel();
+        }
+
+        // Clamp stored level to available content to avoid loading missing levels
+        int maxAvailableLevel = GetMaxAvailableLevel();
+        if (currentLv > maxAvailableLevel)
+        {
+            currentLv = maxAvailableLevel;
+            PlayerPrefs.SetInt("CurrentLevel", currentLv);
+            PlayerPrefs.Save();
         }
         bgManager.SetBG(PlayerPrefs.GetInt("CurrentWall"));
 
@@ -162,6 +178,8 @@ public class GameManager : MonoBehaviour
     public void SaveCoin()
     {
         PlayerPrefs.SetInt("Coin", currentCoin);
+        UserStatusSync.SaveUserStatus(this);
+        Debug.Log("SaveCoin: " + currentCoin);
     }
 
     private void GetCurrentLevel()
@@ -739,8 +757,23 @@ public class GameManager : MonoBehaviour
     IEnumerator ShowFinishLevelIE()
     {
         yield return new WaitForSeconds(0.5f);
-        currentLv++;
+        int maxAvailableLevel = GetMaxAvailableLevel();
+
+        if (currentLv < maxAvailableLevel)
+        {
+            currentLv++;
+        }
+        else
+        {
+            // Keep the level at the last available one so we can send player to the selector
+            currentLv = maxAvailableLevel;
+        }
+
         PlayerPrefs.SetInt("CurrentLevel", currentLv);
+        PlayerPrefs.Save();
+
+        // Save user status to server after level completion
+        UserStatusSync.SaveUserStatus(this);
 
         GameManager.instance.uiManager.profileView.GetAchieData();
 
@@ -780,6 +813,25 @@ public class GameManager : MonoBehaviour
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventDataCurrentPosition, results);
         return results.Count > 0;
+    }
+
+    private int GetMaxAvailableLevel()
+    {
+        if (cachedMaxAvailableLevel > 0)
+            return cachedMaxAvailableLevel;
+
+        int highestLevelFound = 1;
+        for (int i = 1; i <= MaxLevelsToCheck; i++)
+        {
+            var levelAsset = Resources.Load<LevelSetting>("LevelConfigs/Level" + i);
+            if (levelAsset != null)
+                highestLevelFound = i;
+            else
+                break;
+        }
+
+        cachedMaxAvailableLevel = highestLevelFound;
+        return cachedMaxAvailableLevel;
     }
 
     void SetFirstData()
@@ -844,6 +896,17 @@ public class GameManager : MonoBehaviour
 
     public void NextLevel()
     {
+        int maxAvailableLevel = GetMaxAvailableLevel();
+        if (currentLv >= maxAvailableLevel)
+        {
+            // We're past the last available level – go to level select instead of reloading a missing level
+            currentLv = maxAvailableLevel;
+            PlayerPrefs.SetInt("CurrentLevel", currentLv);
+            PlayerPrefs.Save();
+            SceneRouter.LoadLevelSelectScene();
+            return;
+        }
+
         for (int i = 0; i < GameManager.instance.tubeListInGame.Count; i++)
         {
             Destroy(GameManager.instance.tubeListInGame[i].gameObject);
@@ -926,6 +989,17 @@ public class GameManager : MonoBehaviour
         GameManager.instance.SaveCoin();
     }
 
+    public string getPlayerId()
+    {
+#if UNITY_ANDROID
+        return MyGamez.MySDK.Api.Login.GetLoginInfo().PlayerID ?? "Guest";
+#elif UNITY_IOS
+        return MyGamezGameObject.GetCurrentMyGamezId() ?? "Guest";
+#else
+        return "Guest";
+#endif
+    }
+
     public void OnLogoutButtonClicked()
     {
         Debug.Log("Logout button clicked");
@@ -936,12 +1010,12 @@ public class GameManager : MonoBehaviour
     {
         if (dialogWindow != null)
         {
-            dialogWindow.setTitleText("Logout Warning!");
-            dialogWindow.setMessageText("Logging out will remove all account information from this device. You may lose access to your game progress. Do you want to continue?");
-            dialogWindow.setLeftText("Cancel");
+            dialogWindow.setTitleText("注销账号");
+            dialogWindow.setMessageText("  请注意！该功能为删除账号所有进度以及账号所有关联信息，删除后将无法恢复。请认真考虑后选择。");
+            dialogWindow.setLeftText("取消");
             dialogWindow.setLeftCallback(OnLogoutCancel);
             dialogWindow.setRightButtonActive(true);
-            dialogWindow.setRightText("Confirm");
+            dialogWindow.setRightText("确认");
             dialogWindow.setRightCallback(OnLogoutConfirm);
             dialogWindow.show();
         }
@@ -950,6 +1024,64 @@ public class GameManager : MonoBehaviour
             Debug.LogError("DialogWindowController not assigned in GameManager!");
         }
     }
+
+    public void ShowAgeLimitedDialog(int type)
+    {
+        if (MyGamezGameObject.IsAdult())
+        {
+            Debug.Log("Player is adult, skipping age limited dialog");
+            return;
+        }
+        if (singleDialogWindow != null)
+        {
+#if UNITY_IOS
+            Debug.Log("IOS: Show Age Limited Dialog, type: " + type);
+            MyGamezGameObject.DoRequestPromptCallback(type, ShowPromptDialogCallback);
+#else
+            if (type == 6) // Store Enter
+            {
+                AntiAddiction.PromptDialogData data = AntiAddiction.GetStoreEnterPromptDialogData();
+                ShowPromptDialogCallback(data.Title, data.Body, data.Button);
+            }
+            else
+            {
+                AntiAddiction.PromptDialogData data = AntiAddiction.GetMonthlyPurchaseLimitExceededPromptDialogData();
+                ShowPromptDialogCallback(data.Title, data.Body, data.Button);
+            }
+
+#endif
+        }
+        else
+        {
+            Debug.LogError("DialogWindowController not assigned in GameManager!");
+        }
+    }
+
+
+    private void ShowPromptDialogCallback(string title, string body, string button)
+    {
+        if (singleDialogWindow != null)
+        {
+            Debug.Log("Show PromptDialog, Title: " + title);
+            Debug.Log("Show PromptDialog, Body: " + body);
+            Debug.Log("Show PromptDialog, Button: " + button);
+            singleDialogWindow.setTitleText(title);
+            singleDialogWindow.setMessageText(body);
+            singleDialogWindow.setLeftText(button);
+            singleDialogWindow.setLeftCallback(
+                delegate
+                {
+                    singleDialogWindow.hide();
+                });
+            singleDialogWindow.show();
+        }
+        else
+        {
+            Debug.LogError("DialogWindowController not assigned in GameManager!");
+        }
+    }
+
+
 
     private void OnLogoutCancel()
     {
@@ -985,6 +1117,9 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.DeleteKey("CurrentPalette");
         PlayerPrefs.DeleteKey("CurrentWall");
         PlayerPrefs.DeleteKey("RestartNumber");
+        // Clear user status (both local and server-side)
+        UserStatusSync.ClearUserStatus(this);
+        UserStatusSync.PrintAllPlayerPrefs();
         
     }
 

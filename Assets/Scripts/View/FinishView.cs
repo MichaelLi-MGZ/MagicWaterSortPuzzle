@@ -86,6 +86,14 @@ public class FinishView : BaseView
     public void AddBonusCoin()
     {
         //AdsControl.Instance.ShowRewardedAd(AdsControl.REWARD_TYPE.COIN_300);
+        //TODO: Implement with ads in future
+        confetVfx.Stop();
+        starVfx.Stop();
+        confetVfx.gameObject.SetActive(false);
+        starVfx.gameObject.SetActive(false);
+        HideView();
+        GameManager.instance.AddCoin(300);
+        GameManager.instance.NextLevel();
     }
 
     public void NextLevel()

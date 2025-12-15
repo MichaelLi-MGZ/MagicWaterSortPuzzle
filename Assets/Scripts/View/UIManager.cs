@@ -47,6 +47,18 @@ public class UIManager : MonoBehaviour
         shopView.InitView();
 
         profileView.InitView();
+
+        // Auto-find DemoUIController and register with DialogService
+        MyGamez.Demo.DemoUIController foundController = FindObjectOfType<MyGamez.Demo.DemoUIController>();
+        if (foundController != null)
+        {
+            DialogService.Instance.SetDemoUIController(foundController);
+            Debug.Log("UIManager: Auto-found DemoUIController and registered with DialogService");
+        }
+        else
+        {
+            Debug.LogWarning("UIManager: DemoUIController not found. Privacy policy dialogs may not work.");
+        }
     }
 
     /// <summary>
