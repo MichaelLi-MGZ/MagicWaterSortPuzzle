@@ -555,11 +555,21 @@ namespace MyGamez.Demo
                 MySDK.Api.Login.RegisterLoginStateListener(loginStateListener);
             }
 
+            // Check available login methods
             List<MySDK.Api.Login.Vendor> vendors = MySDK.Api.Login.GetAvailableVendors();
-            Debug.Log("Vendors available: " + vendors.ToString());
-
-            // ISBN version always has only one vendor
-            MySDK.Api.Login.DoLogin(vendors[0]);
+            Debug.Log("Vendors available: " + string.Join(", ", vendors));
+            // Check if there's a preferred login vendor
+            MySDK.Api.Login.Vendor preferredVendor = MySDK.Api.Login.GetPreferredVendor();
+            if (vendors.Count == 1) {
+                // Only one login method, use it
+                MySDK.Api.Login.DoLogin(vendors[0]);
+            } else if (preferredVendor != null) {
+                // Multiple login methods, but preferred vendor is available
+                MySDK.Api.Login.DoLogin(preferredVendor);
+            } else {
+                // Multiple login methods, no preferred vendor, show selection dialog
+                //ShowLoginSelectionDialog(vendors);
+            }
             
 #endif
         }
@@ -575,6 +585,15 @@ namespace MyGamez.Demo
             switch (loginState)
             {
                 case MySDK.Api.Login.LoginState.LOGGED_IN:
+                    // User logged in successfully
+                    MySDK.Api.Login.LoginInfo loginInfo = MySDK.Api.Login.GetLoginInfo();
+                    string playerId = loginInfo.PlayerID;
+                    // Get verification data for server validation
+                    MySDK.Api.Security.Verification verification = loginInfo.Verification;
+                    // Send verification data to your game server.
+                    // Your server should validate this data using MyGamez public key
+                    //SendVerificationToServer(playerId, verification);
+                    // Continue to anti-addiction
                     Debug.Log("DemoUIController: User logged in successfully, initializing anti-addiction");
                     InitializeAntiaddiction();
                     break;
