@@ -1117,6 +1117,7 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.DeleteKey("CurrentPalette");
         PlayerPrefs.DeleteKey("CurrentWall");
         PlayerPrefs.DeleteKey("RestartNumber");
+        PlayerPrefs.DeleteKey("IsPpAccepted");
         // Clear user status (both local and server-side)
         UserStatusSync.ClearUserStatus(this);
         UserStatusSync.PrintAllPlayerPrefs();
