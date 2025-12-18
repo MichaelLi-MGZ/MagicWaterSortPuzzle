@@ -10,12 +10,22 @@ dependencies {
     implementation 'com.unity3d.ads:unity-ads:[4.12.0,4.13[' // Packages/com.unity.ads/Editor/Source/Dependencies.xml:7
     // Android Resolver Dependencies End
     // Core MySDK
-    implementation 'com.mygamez.mysdk:mysdk:5.0.5'
+    implementation 'com.mygamez.mysdk:mysdk:5.0.0'
     // Test modules (for development)
-    implementation 'com.mygamez.mysdk.mysdk-test:core:5.0.5'
-    implementation 'com.mygamez.mysdk.mysdk-test:login:5.0.5'
-    implementation 'com.mygamez.mysdk.mysdk-test:monopoly:5.0.5'
-    implementation 'com.mygamez.mysdk.mysdk-test:features:5.0.5'
+    //implementation 'com.mygamez.mysdk.mysdk:core:5.0.0'
+    implementation 'com.mygamez.mysdk.aurora:login:5.0.0'
+    implementation 'com.mygamez.mysdk.aurora:core:5.0.0'
+    implementation 'com.mygamez.mysdk.wechat:login:5.0.0'
+    implementation 'com.mygamez.mysdk.wechat:core:5.0.0'
+    implementation 'com.mygamez.mysdk.wechat:billing:5.0.0'
+    implementation 'com.mygamez.mysdk.alipay:billing:5.0.0'
+
+
+    
+
+    // MSA OAID module (needed only if you use OAID)
+    //implementation ("com.mygamez.mysdk.msa:oaid:5.0.0")
+
 **DEPS**}
 
 repositories {
@@ -23,8 +33,8 @@ repositories {
     mavenCentral()
     mavenLocal()
     // MySDK private Maven repository
-    maven {
-        url 'https://git.ci.mygamez.cloud/api/packages/maven_publishers/maven'
+    maven { ///maven
+        url 'https://packages.ci.mygamez.cloud/api/packages/maven/maven'
         credentials {
             username = MYSDK_MAVEN_USER
             password = MYSDK_MAVEN_PASS

@@ -25,7 +25,7 @@ dependencyResolutionManagement {
 // Android Resolver Repos End
         // MySDK private Maven repository
         maven {
-            url 'https://git.ci.mygamez.cloud/api/packages/maven_publishers/maven'
+            url 'https://packages.ci.mygamez.cloud/api/packages/maven/maven'
             credentials {
                 username = MYSDK_MAVEN_USER
                 password = MYSDK_MAVEN_PASS

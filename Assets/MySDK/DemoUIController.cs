@@ -14,10 +14,10 @@ namespace MyGamez.Demo
     {
         
         public DialogWindowController dialogWindow;
+        public LoginSelectDialogController loginSelectDialogController;
         public SingleButtonDialogWindowController singleButtonDialogWindow;
         public DialogWindowController warningDialogWindow;
         public RIDCheckDialogController RIDCheckDialog;
-        public GameObject toastMessage;
         public NotificationBackground notificationBackground;
         public AgeAppropriateWindowController ageAppropriateWindowController; // Reference to window controller
         public GameObject appleSignInButton; // Apple Sign-In button (hidden by default)
@@ -75,8 +75,6 @@ namespace MyGamez.Demo
 
         private void Start()
         {
-            toastMessage.SetActive(false);
-            ToastMessage.SetToastObject(toastMessage, this);
 
 #if UNITY_IOS
             TryAuthenticateGameCenter();
@@ -568,10 +566,29 @@ namespace MyGamez.Demo
                 MySDK.Api.Login.DoLogin(preferredVendor);
             } else {
                 // Multiple login methods, no preferred vendor, show selection dialog
-                //ShowLoginSelectionDialog(vendors);
+                ShowLoginSelectionDialog(vendors);
             }
             
 #endif
+        }
+
+        private void ShowLoginSelectionDialog(List<MySDK.Api.Login.Vendor> vendors)
+        {
+
+            loginSelectDialogController.setWechatLoginCallback(
+                delegate
+                {
+                    MySDK.Api.Login.DoLogin(MySDK.Api.Login.Vendor.WECHAT3);
+                });
+            loginSelectDialogController.setPhoneLoginCallback(
+            delegate
+            {
+                    MySDK.Api.Login.DoLogin(MySDK.Api.Login.Vendor.AURORA);
+            });
+            loginSelectDialogController.setWechatLoginButtonActive(true);
+            loginSelectDialogController.setPhoneLoginButtonActive(true);
+            
+            loginSelectDialogController.show();
         }
 
         /// <summary>

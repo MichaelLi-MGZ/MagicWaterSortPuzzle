@@ -1,70 +1,46 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using MyGamez.Demo;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class ToastMessage : MonoBehaviour
 {
-    public const int LENGTH_LONG = 1;
-    public const int LENGTH_SHORT = 0;
+    [SerializeField] private TMP_Text text;
+    [SerializeField] private CanvasGroup canvasGroup;
 
-    [Tooltip("Duration of long toast message. Only applicable to non-android version")]
-    public const float LONG_DURATION = 5f;
-    [Tooltip("Duration of short toast message. Only applicable to non-android version")]
-    public const float SHORT_DURATION = 1f;
+    private Coroutine autoHideCoroutine;
 
-    private static DemoUIController controller;
-    private static GameObject toastMessage;
-
-    public static void SetToastObject(GameObject obj, DemoUIController cntr)
+    private void Awake()
     {
-        toastMessage = obj;
-        controller = cntr;
+        // 一开始一定是隐藏的
+        canvasGroup.alpha = 0f;
+        gameObject.SetActive(false);
     }
 
-    public static void Show(string text, int length = LENGTH_SHORT)
+    public void Show(string msg, float duration)
     {
-#if UNITY_ANDROID && !UNITY_EDITOR
-        AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-        AndroidJavaObject unityActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-
-        if (unityActivity != null)
+        // 防止连续调用叠协程
+        if (autoHideCoroutine != null)
         {
-            AndroidJavaClass toastClass = new AndroidJavaClass("android.widget.Toast");
-            unityActivity.Call("runOnUiThread", new AndroidJavaRunnable(() =>
-            {
-                AndroidJavaObject toastObject = toastClass.CallStatic<AndroidJavaObject>("makeText", unityActivity, text, length);
-                toastObject.Call("show");
-            }));
+            StopCoroutine(autoHideCoroutine);
+            autoHideCoroutine = null;
         }
-    }
-#else
-        // Demo toastmessage for non-android
-        if (toastMessage == null)
-        {
-            return;
-        }
-        Text txt = toastMessage.GetComponentInChildren<Text>();
-        txt.text = text;
-        // TODO: fade in / fade out?
-        toastMessage.SetActive(true);
-        ToastMessage msg = (ToastMessage)controller.gameObject.AddComponent(typeof(ToastMessage));
-        msg.Invoke(nameof(Hide), length == LENGTH_SHORT ? SHORT_DURATION : LONG_DURATION);
-        msg.StartCoroutine(msg.ExecuteAfter(length == LENGTH_SHORT ? SHORT_DURATION : LONG_DURATION, msg.Hide));
+
+        text.text = msg;
+        gameObject.SetActive(true);
+        canvasGroup.alpha = 1f;
+
+        autoHideCoroutine = StartCoroutine(AutoHide(duration));
     }
 
-    private IEnumerator ExecuteAfter(float time, Action task)
+    private IEnumerator AutoHide(float duration)
     {
-        yield return new WaitForSeconds(time);
-        task();
+        yield return new WaitForSeconds(duration);
+        canvasGroup.alpha = 0f;
+        gameObject.SetActive(false);
+        autoHideCoroutine = null;
     }
-
-    private void Hide()
-    {
-        toastMessage.SetActive(false);
-        Destroy(this);
-    }
-#endif
 }
+

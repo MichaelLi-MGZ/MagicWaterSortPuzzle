@@ -5,7 +5,7 @@ buildscript {
         maven { url 'https://jitpack.io' }
         // MySDK private Maven for buildscript
         maven {
-            url 'https://git.ci.mygamez.cloud/api/packages/maven_publishers/maven'
+            url 'https://packages.ci.mygamez.cloud/api/packages/maven/maven'
             credentials {
                 username = project.findProperty("MYSDK_MAVEN_USER") ?: ""
                 password = project.findProperty("MYSDK_MAVEN_PASS") ?: ""
@@ -35,7 +35,7 @@ allprojects {
 		flatDir { dirs 'libs' }
 		// MySDK private Maven
 		maven {
-			url 'https://git.ci.mygamez.cloud/api/packages/maven_publishers/maven'
+			url 'https://packages.ci.mygamez.cloud/api/packages/maven/maven'
             credentials {
                 username = project.findProperty("MYSDK_MAVEN_USER") ?: ""
                 password = project.findProperty("MYSDK_MAVEN_PASS") ?: ""

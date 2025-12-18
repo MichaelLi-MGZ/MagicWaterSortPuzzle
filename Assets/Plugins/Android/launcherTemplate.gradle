@@ -25,6 +25,15 @@ android {
         }
         versionCode **VERSIONCODE**
         versionName '**VERSIONNAME**'
+        manifestPlaceholders = [
+        aurora_debug    : "false",
+        wechat_app_id   : "dummy",
+        wechat_mch_id   : "dummy",
+        alipay_app_id   : "dummy",
+        sandbox_mode    : "false",
+        JPUSH_APPKEY    : "dummy",
+        JPUSH_CHANNEL   : "default"
+        ]
     }
 
     aaptOptions {
