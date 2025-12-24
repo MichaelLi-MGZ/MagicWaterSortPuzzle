@@ -13,7 +13,7 @@ namespace MyGamez.Demo
 		private static readonly string[] DefaultUserStatusIntKeys = new[]
 		{
 			"UseBottles", "AdsEnabled", "ShowAds", "removeAds",
-			"CurrentLevel", "Coin", "Start", "Undo", "RestartNumber",
+			"CurrentLevel", "SelectedLevel", "Coin", "Start", "Undo", "RestartNumber",
 			"Bottle0", "Bottle1", "Bottle2", "Bottle3", "Bottle4", "Bottle5",
 			"Wall0", "Wall1", "Wall2", "Wall3", "Wall4", "Wall5",
 			"Palette0", "Palette1", "Palette2", "Palette3", "Palette4", "Palette5",

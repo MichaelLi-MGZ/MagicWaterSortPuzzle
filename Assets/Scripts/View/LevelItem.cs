@@ -11,6 +11,8 @@ public class LevelItem : MonoBehaviour
 	private int levelIndex;
 	private bool isLocked;
 
+	public int LevelIndex => levelIndex;
+
 	public void Setup(int levelIndex, bool locked, Sprite openedSprite, Sprite lockedSprite)
 	{
 		this.levelIndex = levelIndex;
@@ -48,6 +50,14 @@ public class LevelItem : MonoBehaviour
             return;
         }
         Debug.Log("加载第 " + levelIndex + " 关");
+        // Save SelectedLevel to PlayerPrefs and sync to server
+        PlayerPrefs.SetInt("SelectedLevel", levelIndex);
+        PlayerPrefs.Save();
+        // Sync to server if GameManager instance exists
+        if (GameManager.instance != null)
+        {
+            MyGamez.Demo.UserStatusSync.SaveUserStatus(GameManager.instance);
+        }
         SceneRouter.LoadGameWithLevel(levelIndex);
     }
 }

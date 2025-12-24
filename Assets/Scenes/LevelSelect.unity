@@ -885,8 +885,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1090857429}
   m_HandleRect: {fileID: 1090857428}
   m_Direction: 2
-  m_Value: 1
-  m_Size: 0.9999975
+  m_Value: 0
+  m_Size: 0.99993646
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -1517,7 +1517,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -515, y: 1141.4998}
+  m_AnchoredPosition: {x: -515, y: 1141.5001}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &969433700
@@ -1881,6 +1881,7 @@ MonoBehaviour:
   levelItemPrefab: {fileID: 23817660545081756, guid: 2a9b4ab3908cb455ea847ed055e76ca2, type: 3}
   openedLevelSprite: {fileID: 21300000, guid: 21069c014dc644ed5b608154a856d12c, type: 3}
   lockedLevelSprite: {fileID: 21300000, guid: bb9ed9fc1ec8648da95c009f5f660160, type: 3}
+  scrollRect: {fileID: 1322345207}
   maxLevelsToShow: 500
   firstLockedLevelOffset: 1
   profileBtn: {fileID: 966170230}

@@ -11,6 +11,7 @@ public class LevelSelectManager : MonoBehaviour
 	public GameObject levelItemPrefab;
 	public Sprite openedLevelSprite;
 	public Sprite lockedLevelSprite;
+	public ScrollRect scrollRect;
 	[Header("Config")]
 	public int maxLevelsToShow = 500;
 	public int firstLockedLevelOffset = 1; // first unlocked is 1
@@ -36,6 +37,8 @@ public class LevelSelectManager : MonoBehaviour
 	{
 		Populate();
 		UpdateCoinDisplay();
+		// Scroll to SelectedLevel after a frame to ensure layout is complete
+		StartCoroutine(ScrollToSelectedLevel());
 	}
 
 	private void OnEnable()
@@ -140,6 +143,70 @@ public class LevelSelectManager : MonoBehaviour
 	{
 		// Public method to manually refresh coin display
 		UpdateCoinDisplay();
+	}
+
+	private System.Collections.IEnumerator ScrollToSelectedLevel()
+	{
+		// Wait for layout to complete
+		yield return new WaitForEndOfFrame();
+		yield return null; // Wait one more frame to ensure all items are positioned
+
+		if (scrollRect == null || contentRoot == null)
+		{
+			Debug.LogWarning("LevelSelectManager: ScrollRect or contentRoot is null, cannot scroll to SelectedLevel");
+			yield break;
+		}
+
+		int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+		Debug.Log("LevelSelectManager: Scrolling to SelectedLevel: " + selectedLevel);
+
+		// Find the level item in the content
+		Transform levelItemTransform = null;
+		foreach (Transform child in contentRoot)
+		{
+			LevelItem item = child.GetComponent<LevelItem>();
+			if (item != null && item.LevelIndex == selectedLevel)
+			{
+				levelItemTransform = child;
+				break;
+			}
+		}
+
+		if (levelItemTransform != null)
+		{
+			// Calculate normalized position to scroll to
+			RectTransform itemRect = levelItemTransform.GetComponent<RectTransform>();
+			RectTransform contentRect = contentRoot;
+			RectTransform viewportRect = scrollRect.viewport;
+
+			// For top-anchored content, items have negative Y positions
+			// Calculate the position of the item relative to content top
+			float itemY = itemRect.anchoredPosition.y; // This will be negative
+			float contentHeight = contentRect.rect.height;
+			float viewportHeight = viewportRect.rect.height;
+
+			// Calculate how far down the item is from the top
+			float itemDistanceFromTop = Mathf.Abs(itemY);
+			
+			// Calculate the scrollable distance
+			float scrollableDistance = Mathf.Max(0, contentHeight - viewportHeight);
+			
+			// Normalized position: 1 = top (showing first items), 0 = bottom (showing last items)
+			// We want to center the item in the viewport if possible
+			float targetScrollDistance = itemDistanceFromTop - (viewportHeight * 0.5f);
+			targetScrollDistance = Mathf.Clamp(targetScrollDistance, 0, scrollableDistance);
+			
+			float normalizedY = scrollableDistance > 0 ? 1f - (targetScrollDistance / scrollableDistance) : 1f;
+			normalizedY = Mathf.Clamp01(normalizedY);
+
+			// Scroll to the position
+			scrollRect.verticalNormalizedPosition = normalizedY;
+			Debug.Log("LevelSelectManager: Scrolled to normalized position: " + normalizedY + " for level " + selectedLevel);
+		}
+		else
+		{
+			Debug.LogWarning("LevelSelectManager: Could not find level item for SelectedLevel: " + selectedLevel);
+		}
 	}
 
 }

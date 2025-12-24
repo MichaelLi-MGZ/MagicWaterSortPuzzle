@@ -31,6 +31,15 @@ public static class SceneRouter
 
 	public static void LoadLevelSelectScene()
 	{
+		// Save current level as SelectedLevel before navigating back
+		if (GameManager.instance != null)
+		{
+			int currentLevel = GameManager.instance.currentLv;
+			PlayerPrefs.SetInt("SelectedLevel", currentLevel);
+			PlayerPrefs.Save();
+			// Sync to server
+			MyGamez.Demo.UserStatusSync.SaveUserStatus(GameManager.instance);
+		}
 		SceneManager.LoadScene(LevelSelectSceneName);
 	}
 

@@ -779,6 +779,8 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("GameManager: ShowFinishLevel, CurrentLevel: " + currentLv);
         PlayerPrefs.SetInt("CurrentLevel", Mathf.Max(currentLv, maxAvailableLevel));
+        // Update SelectedLevel to the new current level
+        PlayerPrefs.SetInt("SelectedLevel", currentLv);
         PlayerPrefs.Save();
 
         // Save user status to server after level completion
@@ -914,6 +916,8 @@ public class GameManager : MonoBehaviour
             currentLv = maxAvailableLevel;
             Debug.Log("GameManager: NextLevel1, CurrentLevel: " + currentLv);
             PlayerPrefs.SetInt("CurrentLevel", currentLv);
+            // Update SelectedLevel to the current level
+            PlayerPrefs.SetInt("SelectedLevel", currentLv);
             PlayerPrefs.Save();
             SceneRouter.LoadLevelSelectScene();
             return;
