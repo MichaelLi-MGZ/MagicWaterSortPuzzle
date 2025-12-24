@@ -25,7 +25,10 @@ public class LevelSelectManager : MonoBehaviour
 
 	private void Awake()
 	{
+		Debug.Log("LevelSelectManager: Awake, CurrentLevel: " + PlayerPrefs.GetInt("CurrentLevel", 1));
+		
 		highestUnlockedLevel = Mathf.Max(1, PlayerPrefs.GetInt("CurrentLevel", 1));
+		Debug.Log("LevelSelectManager: highestUnlockedLevel: " + highestUnlockedLevel);
 		GetCoinData();
 	}
 
@@ -58,6 +61,7 @@ public class LevelSelectManager : MonoBehaviour
 
 		int total = CountAvailableLevelAssets();
 		int toShow = Mathf.Min(maxLevelsToShow, total);
+		highestUnlockedLevel = Mathf.Max(1, PlayerPrefs.GetInt("CurrentLevel", 1));
 		
 		Debug.Log("LevelSelectManager: Found " + total + " levels, showing " + toShow + ", highest unlocked: " + highestUnlockedLevel);
 

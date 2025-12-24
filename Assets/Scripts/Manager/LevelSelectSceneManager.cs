@@ -22,7 +22,9 @@ public class LevelSelectSceneManager : MonoBehaviour
     
     private void Start()
     {
+        Debug.Log("LevelSelectSceneManager: Start, CurrentLevel: " + PlayerPrefs.GetInt("CurrentLevel", 1));
         highestUnlockedLevel = Mathf.Max(1, PlayerPrefs.GetInt("CurrentLevel", 1));
+        Debug.Log("LevelSelectSceneManager: highestUnlockedLevel: " + highestUnlockedLevel);
         PopulateLevels();
     }
     
@@ -52,7 +54,7 @@ public class LevelSelectSceneManager : MonoBehaviour
         
         int total = CountAvailableLevelAssets();
         int toShow = Mathf.Min(maxLevelsToShow, total);
-        
+        highestUnlockedLevel = Mathf.Max(1, PlayerPrefs.GetInt("CurrentLevel", 1));
         Debug.Log("LevelSelectSceneManager: Found " + total + " levels, showing " + toShow + ", highest unlocked: " + highestUnlockedLevel);
         
         for (int i = 1; i <= toShow; i++)
