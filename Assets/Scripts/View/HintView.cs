@@ -28,7 +28,7 @@ public class HintView : BaseView, IBeginDragHandler, IEndDragHandler
 
     [Header("Page Alpha")]
     public float activePageAlpha = 1f;
-    public float inactivePageAlpha = 0.1f; // 90% alpha
+    public float inactivePageAlpha = 0f; // 00% alpha
     public float alphaTweenDuration = 0.2f;
 
     private List<CanvasGroup> pageCanvasGroups = new List<CanvasGroup>();

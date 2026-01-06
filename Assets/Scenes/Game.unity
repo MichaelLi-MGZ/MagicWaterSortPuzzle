@@ -6772,7 +6772,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 188423db56e5a4b80a85cb7f03abf062, type: 3}
+  m_Sprite: {fileID: 21300000, guid: f8d27c2d4713c4f7c9d1f9d930903739, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -9569,7 +9569,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u901A\u8FC7\u5C06\u8FD9\u4E9B\u989C\u8272\u5012\u5165\u7A7A\u70E7\u74F6\u6765\u5F00\u59CB\u5173\u5361\n\n"
+  m_text: "\u6E38\u620F\u5C0F\u63D0\u793A!\n\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
   m_sharedMaterial: {fileID: 8980274474525062747, guid: 4414ed3ce6f0a4d3cb34d0d9df6e30d5, type: 2}
@@ -9596,7 +9596,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 65.25
+  m_fontSize: 72
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -14121,7 +14121,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 2b545b4d4709d4177bbf41be3838e98f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 2f42ea8925268431f945feefeb3a4c99, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
