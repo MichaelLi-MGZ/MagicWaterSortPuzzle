@@ -16,7 +16,7 @@ public class UIManager : MonoBehaviour
 
     public WarningView bonusLevelView;
 
-    public WarningView hintView;
+    public HintView hintView;
 
     public ProfileView profileView;
 
