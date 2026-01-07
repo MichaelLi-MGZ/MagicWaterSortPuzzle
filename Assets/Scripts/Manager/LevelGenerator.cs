@@ -243,6 +243,36 @@ public class LevelGenerator : MonoBehaviour
 
     public void UnlockHintBottleCB()
     {
+
+        //todo show dialog to confirm if user want to spend 500 coins to unlock hint bottle
+        // if user cancel, then do nothing
+        // if user confirm, need to check if user has enough coins to unlock hint bottle
+        // if user has enough coins, then unlock hint bottle and subtract 500 coins from user's coins and save to local and server
+        // if user does not have enough coins, then show dialog to tell user to buy more coins
+        GameManager.instance.uiManager.warningView.ShowView("要花费500金币解锁额外瓶子吗？",() =>
+                {
+                    HandleUnlockHintBottlePurchase();
+                });
+    }
+
+    /// <summary>
+    /// Handle the actual purchase logic for unlocking the hint bottle.
+    /// </summary>
+    private void HandleUnlockHintBottlePurchase()
+    {
+        const int cost = 500;
+
+        // Double-check coins at time of confirm
+        if (GameManager.instance.currentCoin < cost)
+        {
+            // Coins became insufficient – show buy-coins dialog
+            GameManager.instance.uiManager.warningView.ShowView("对不起，您的金币不足，请获取更多金币。");
+            return;
+        }
+
+        // Enough coins – subtract cost (saves to local + server via SubCoin)
+        GameManager.instance.SubCoin(cost);
+
         hintTube.UnlockTube();
         AudioManager.instance.addTube.Play();
         GameManager.instance.tubeListInGame.Add(hintTube);
