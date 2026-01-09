@@ -101,12 +101,19 @@ public class DialogWindowController : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        int linkIndex = TMP_TextUtilities.FindIntersectingLink(msgText, Input.mousePosition, null);
+
+        Camera cam = null;
+        Canvas canvas = msgText.canvas;
+        if (canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+        {
+            cam = canvas.worldCamera;
+        }
+
+        int linkIndex = TMP_TextUtilities.FindIntersectingLink(msgText, eventData.position, cam);
         if (linkIndex != -1)
         {
             TMP_LinkInfo linkInfo = msgText.textInfo.linkInfo[linkIndex];
             string linkID = linkInfo.GetLinkID();
-
             if (linkID == "pp")
             {
                 Debug.Log("pp dialog show");
@@ -118,6 +125,9 @@ public class DialogWindowController : MonoBehaviour, IPointerClickHandler
                 ShowTermsDialog();
             }
         }
+        else{
+            Debug.Log("DialogWindowController: OnPointerClick, linkIndex is -1");
+        }
     }
     
     /// <summary>
@@ -127,6 +137,7 @@ public class DialogWindowController : MonoBehaviour, IPointerClickHandler
     {
         if (privateDialogController != null)
         {
+            Debug.Log("ShowPrivateDialog, privateDialogController is not null");
             privateDialogController.show();
         }
         else
@@ -142,6 +153,7 @@ public class DialogWindowController : MonoBehaviour, IPointerClickHandler
     {
         if (termsDialogController != null)
         {
+            Debug.Log("ShowTermsDialog, termsDialogController is not null");
             termsDialogController.show();
         }
         else

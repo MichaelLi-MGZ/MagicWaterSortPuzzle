@@ -23,6 +23,9 @@ public class ProfileView : BaseView
     public Transform achieItemRoot;
 
     public AchieView achieView;
+
+    public DialogWindowController dialogWindow;
+    public DialogWindowController warningDialogWindow;
   
     public override void InitView()
     {
@@ -211,11 +214,44 @@ public class ProfileView : BaseView
         // Don't clear source scene - just hide the view
     }
 
-
-    public void ShowPrivacyPolicyAndTosDialog()
+    private void ShowPrivacyPolicyAndTosDialog()
     {
-        DialogService.Instance.ShowPrivacyPolicyAndTosDialog();
+        // Show dialog to the player.
+        dialogWindow.setLeftCallback(
+            delegate
+            {
+                ShowWarningDialog();
+            });
+        dialogWindow.setRightButtonActive(true);
+        dialogWindow.setRightCallback(
+            delegate
+            {
+                dialogWindow.hide();
+            });
+        Debug.Log("Show PP Dialog");
+        dialogWindow.show();
     }
+
+    private void ShowWarningDialog()
+        {
+            // Show dialog to the player.
+            warningDialogWindow.setLeftCallback(
+                delegate
+                {
+                    PlayerPrefs.DeleteKey("IsPpAccepted");
+                    PlayerPrefs.Save();
+                    warningDialogWindow.hide();
+                    Application.Quit();
+                });
+            warningDialogWindow.setRightButtonActive(true);
+            warningDialogWindow.setRightCallback(
+                delegate
+                {
+                    // Demo code
+                    warningDialogWindow.hide();
+                });
+            warningDialogWindow.show();
+        }
 
 }
 
