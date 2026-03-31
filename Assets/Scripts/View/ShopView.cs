@@ -845,7 +845,19 @@ public class ShopViewPayCallback : Billing.IPayCallback
         }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.LIMITED){
             Debug.Log("ShopView: Payment limited");
              // Get Prompt data
-            GameManager.instance.ShowAgeLimitedDialog(0);
+             int creditLeft = MyGamez.MySDK.Api.AntiAddiction.GetIAPCreditLeft();
+             Debug.Log("ShopView: Credit left: " + creditLeft);
+             Debug.Log("ShopView: Payment IapInfo.AmountFen: " + result.PayInfo.IapInfo.AmountFen);
+             if (creditLeft < result.PayInfo.IapInfo.AmountFen)
+             {
+                Debug.Log("ShopView: Show Monthly Purchase Limit Exceeded Dialog");
+                GameManager.instance.ShowAgeLimitedDialog(8);
+             }
+             else
+             {
+                Debug.Log("ShopView: Show Single Purchase Limit Exceeded Dialog");
+                GameManager.instance.ShowAgeLimitedDialog(7);
+             }
         }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.CANCELLED){
             Debug.Log("ShopView: Payment cancelled");
         }else if (result.ResultCode == MyGamez.MySDK.Api.ResultCode.FAILED){

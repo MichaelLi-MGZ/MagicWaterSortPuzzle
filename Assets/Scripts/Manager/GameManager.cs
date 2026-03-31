@@ -1059,12 +1059,16 @@ public class GameManager : MonoBehaviour
                 AntiAddiction.PromptDialogData data = AntiAddiction.GetStoreEnterPromptDialogData();
                 ShowPromptDialogCallback(data.Title, data.Body, data.Button);
             }
-            else
+            else if (type == 7)
+            {
+                AntiAddiction.PromptDialogData data = AntiAddiction.GetSinglePurchaseLimitExceededPromptDialogData();
+                ShowPromptDialogCallback(data.Title, data.Body, data.Button);
+            }
+            else if (type == 8)
             {
                 AntiAddiction.PromptDialogData data = AntiAddiction.GetMonthlyPurchaseLimitExceededPromptDialogData();
                 ShowPromptDialogCallback(data.Title, data.Body, data.Button);
             }
-
 #endif
         }
         else
